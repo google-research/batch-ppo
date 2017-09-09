@@ -23,7 +23,7 @@ import setuptools
 
 setuptools.setup(
     name='agents',
-    version='1.0.0',
+    version='1.0.3',
     description=(
         'Efficient TensorFlow implementation of reinforcement learning '
         'algorithms.'),
@@ -34,11 +34,10 @@ setuptools.setup(
         'gym',
         'ruamel.yaml',
     ],
-    packages=[
-        'agents',
-    ],
+    packages=setuptools.find_packages(),
     classifiers=[
-        'Programming Language :: Python :: 3 :: Only',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 3',
         'License :: OSI Approved :: Apache Software License',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
         'Intended Audience :: Science/Research',
