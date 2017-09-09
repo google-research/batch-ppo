@@ -171,7 +171,7 @@ class PPOAlgorithm(object):
       batch = observ, action, self._last_mean, self._last_logstd, reward
       append = self._episodes.append(batch, tf.range(len(self._batch_env)))
     with tf.control_dependencies([append]):
-      norm_obesrv = self._observ_filter.transform(observ)
+      norm_observ = self._observ_filter.transform(observ)
       norm_reward = tf.reduce_mean(self._reward_filter.transform(reward))
       # pylint: disable=g-long-lambda
       summary = tf.cond(self._should_log, lambda: tf.summary.merge([
@@ -179,7 +179,7 @@ class PPOAlgorithm(object):
           self._observ_filter.summary(),
           self._reward_filter.summary(),
           tf.summary.scalar('memory_size', self._memory_index),
-          tf.summary.histogram('normalized_observ', norm_obesrv),
+          tf.summary.histogram('normalized_observ', norm_observ),
           tf.summary.histogram('action', self._last_action),
           tf.summary.scalar('normalized_reward', norm_reward)]), str)
       return summary
