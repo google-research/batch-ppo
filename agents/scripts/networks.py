@@ -27,10 +27,10 @@ _LOGSTD_INITIALIZER = tf.random_normal_initializer(-1, 1e-10)
 
 
 class ForwardGaussianPolicy(tf.contrib.rnn.RNNCell):
-  """Indepent feed forward networks for policy and value.
+  """Independent feed forward networks for policy and value.
 
   The policy network outputs the mean action and the log standard deviation
-  is learned as indepent parameter vector.
+  is learned as independent parameter vector.
   """
 
   def __init__(
@@ -76,7 +76,7 @@ class RecurrentGaussianPolicy(tf.contrib.rnn.RNNCell):
   """Independent recurrent policy and feed forward value networks.
 
   The policy network outputs the mean action and the log standard deviation
-  is learned as indepent parameter vector. The last policy layer is recurrent
+  is learned as independent parameter vector. The last policy layer is recurrent
   and uses a GRU cell.
   """
 
