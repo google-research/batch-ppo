@@ -9,20 +9,21 @@ and allows agents to be implemented in TensorFlow and perform batched
 computation. As a starting point, we provide BatchPPO, an optimized
 implementation of [Proximal Policy Optimization][post-ppo].
 
-Please cite the [white paper][paper-agents] if you use code from this project
-in your research:
+Please cite the [TensorFlow Agents paper][paper-agents] if you use code from
+this project in your research:
 
 ```bibtex
-@misc{hafner2017agents,
+@article{hafner2017agents,
   title={TensorFlow Agents: Efficient Batched Reinforcement Learning in TensorFlow},
   author={Hafner, Danijar and Davidson, James and Vanhoucke, Vincent},
+  journal={arXiv preprint arXiv:1709.02878},
   year={2017}
 }
 ```
 
 Dependencies: Python 2/3, TensorFlow 1.3+, Gym, rumamel.yaml
 
-[paper-agents]: https://drive.google.com/file/d/0B20Yn-GSaVHGMVlPanRTRlNIRlk/view
+[paper-agents]: https://arxiv.org/pdf/1709.02878.pdf
 [post-gym]: https://blog.openai.com/openai-gym-beta/
 [post-ppo]: https://blog.openai.com/openai-baselines-ppo/
 
