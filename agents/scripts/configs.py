@@ -102,7 +102,7 @@ def hopper():
   """Configuration for MuJoCo's hopper task."""
   locals().update(default())
   # Environment
-  env = 'Walker2d-v1'
+  env = 'Hopper-v1'
   max_length = 1000
   steps = 2e7  # 20M
   return locals()
