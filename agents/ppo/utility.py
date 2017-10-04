@@ -46,7 +46,7 @@ def reinit_nested_vars(variables, indices=None):
     return tf.scatter_update(variables, indices, zeros)
 
 
-def assign_nested_vars(variables, tensors):
+def assign_nested_vars(variables, tensors, indices=None):
   """Assign tensors to matching nested tuple of variables.
 
   Args:
@@ -60,7 +60,10 @@ def assign_nested_vars(variables, tensors):
     return tf.group(*[
         assign_nested_vars(variable, tensor)
         for variable, tensor in zip(variables, tensors)])
-  return variables.assign(tensors)
+  if indices is None:
+    return variables.assign(tensors)
+  else:
+    return tf.scatter_update(variables, indices, tensors)
 
 
 def discounted_return(reward, length, discount):

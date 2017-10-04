@@ -35,14 +35,14 @@ class MockAlgorithm(object):
   def begin_episode(self, unused_agent_indices):
     return tf.constant('')
 
-  def perform(self, unused_observ):
-    shape = (len(self._envs),) + self._envs[0].action_space.shape
+  def perform(self, agent_indices, unused_observ):
+    shape = (tf.shape(agent_indices)[0],) + self._envs[0].action_space.shape
     low = self._envs[0].action_space.low
     high = self._envs[0].action_space.high
     action = tf.random_uniform(shape) * (high - low) + low
     return action, tf.constant('')
 
-  def experience(self, *unused_transition):
+  def experience(self, unused_agent_indices, *unused_transition):
     return tf.constant('')
 
   def end_episode(self, unused_agent_indices):

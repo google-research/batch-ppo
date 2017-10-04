@@ -117,7 +117,7 @@ class PPOAlgorithm(object):
       with tf.control_dependencies([reset_state, reset_buffer]):
         return tf.constant('')
 
-  def perform(self, observ):
+  def perform(self, agent_indices, observ):
     """Compute batch of actions and a summary for a batch of observation.
 
     Args:
@@ -128,30 +128,35 @@ class PPOAlgorithm(object):
     """
     with tf.name_scope('perform/'):
       observ = self._observ_filter.transform(observ)
-      network = self._network(
-          observ[:, None], tf.ones(observ.shape[0]), self._last_state)
+      if self._last_state is None:
+        state = None
+      else:
+        state = tf.gather(self._last_state, agent_indices)
+      output = self._network(observ[:, None], tf.ones(observ.shape[0]), state)
       action = tf.cond(
-          self._is_training, network.policy.sample, lambda: network.mean)
-      logprob = network.policy.log_prob(action)[:, 0]
+          self._is_training, output.policy.sample, lambda: output.mean)
+      logprob = output.policy.log_prob(action)[:, 0]
       # pylint: disable=g-long-lambda
       summary = tf.cond(self._should_log, lambda: tf.summary.merge([
-          tf.summary.histogram('mean', network.mean[:, 0]),
-          tf.summary.histogram('std', tf.exp(network.logstd[:, 0])),
+          tf.summary.histogram('mean', output.mean[:, 0]),
+          tf.summary.histogram('std', tf.exp(output.logstd[:, 0])),
           tf.summary.histogram('action', action[:, 0]),
           tf.summary.histogram('logprob', logprob)]), str)
       # Remember current policy to append to memory in the experience callback.
       if self._last_state is None:
         assign_state = tf.no_op()
       else:
-        assign_state = utility.assign_nested_vars(self._last_state, network.state)
+        assign_state = utility.assign_nested_vars(
+            self._last_state, output.state, agent_indices)
       with tf.control_dependencies([
           assign_state,
-          self._last_action.assign(action[:, 0]),
-          self._last_mean.assign(network.mean[:, 0]),
-          self._last_logstd.assign(network.logstd[:, 0])]):
+          tf.scatter_update(self._last_action, agent_indices, action[:, 0]),
+          tf.scatter_update(self._last_mean, agent_indices, output.mean[:, 0]),
+          tf.scatter_update(self._last_logstd, agent_indices, output.logstd[:, 0])]):
         return tf.check_numerics(action[:, 0], 'action'), tf.identity(summary)
 
-  def experience(self, observ, action, reward, unused_done, unused_nextob):
+  def experience(
+      self, agent_indices, observ, action, reward, unused_done, unused_nextob):
     """Process the transition tuple of the current step.
 
     When training, add the current transition tuple to the memory and update
@@ -171,9 +176,9 @@ class PPOAlgorithm(object):
     with tf.name_scope('experience/'):
       return tf.cond(
           self._is_training,
-          lambda: self._define_experience(observ, action, reward), str)
+          lambda: self._define_experience(agent_indices, observ, action, reward), str)
 
-  def _define_experience(self, observ, action, reward):
+  def _define_experience(self, agent_indices, observ, action, reward):
     """Implement the branch of experience() entered during training."""
     update_filters = tf.summary.merge([
         self._observ_filter.update(observ),
@@ -182,8 +187,10 @@ class PPOAlgorithm(object):
       if self._config.train_on_agent_action:
         # NOTE: Doesn't seem to change much.
         action = self._last_action
-      batch = observ, action, self._last_mean, self._last_logstd, reward
-      append = self._episodes.append(batch, tf.range(len(self._batch_env)))
+      batch = (
+          observ, action, tf.gather(self._last_mean, agent_indices),
+          tf.gather(self._last_logstd, agent_indices), reward)
+      append = self._episodes.append(batch, agent_indices)
     with tf.control_dependencies([append]):
       norm_observ = self._observ_filter.transform(observ)
       norm_reward = tf.reduce_mean(self._reward_filter.transform(reward))

@@ -70,15 +70,17 @@ def simulate(batch_env, algo, log=True, reset=False):
       Summary tensor.
     """
     prevob = batch_env.observ + 0  # Ensure a copy of the variable value.
-    action, step_summary = algo.perform(prevob)
+    agent_indices = tf.range(len(batch_env))
+    action, step_summary = algo.perform(agent_indices, prevob)
     action.set_shape(batch_env.action.shape)
     with tf.control_dependencies([batch_env.simulate(action)]):
       add_score = score.assign_add(batch_env.reward)
       inc_length = length.assign_add(tf.ones(len(batch_env), tf.int32))
     with tf.control_dependencies([add_score, inc_length]):
+      agent_indices = tf.range(len(batch_env))
       experience_summary = algo.experience(
-          prevob, batch_env.action, batch_env.reward, batch_env.done,
-          batch_env.observ)
+          agent_indices, prevob, batch_env.action, batch_env.reward,
+          batch_env.done, batch_env.observ)
     return tf.summary.merge([step_summary, experience_summary])
 
   def _define_end_episode(agent_indices):
