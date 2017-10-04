@@ -32,11 +32,9 @@ def default():
   eval_episodes = 25
   use_gpu = False
   # Network
-  network = networks.ForwardGaussianPolicy
+  network = networks.feed_forward_gaussian
   weight_summaries = dict(
-      all=r'.*',
-      policy=r'.*/policy/.*',
-      value=r'.*/value/.*')
+      all=r'.*', policy=r'.*/policy/.*', value=r'.*/value/.*')
   policy_layers = 200, 100
   value_layers = 200, 100
   init_mean_factor = 0.05

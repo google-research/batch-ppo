@@ -26,20 +26,6 @@ import tensorflow as tf
 from tensorflow.python.client import device_lib
 
 
-def create_nested_vars(tensors):
-  """Create variables matching a nested tuple of tensors.
-
-  Args:
-    tensors: Nested tuple of list of tensors.
-
-  Returns:
-    Nested tuple or list of variables.
-  """
-  if isinstance(tensors, (tuple, list)):
-    return type(tensors)(create_nested_vars(tensor) for tensor in tensors)
-  return tf.Variable(tensors, False)
-
-
 def reinit_nested_vars(variables, indices=None):
   """Reset all variables in a nested tuple to zeros.
 

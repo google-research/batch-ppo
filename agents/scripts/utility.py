@@ -97,29 +97,6 @@ def define_saver(exclude=None):
   return saver
 
 
-def define_network(constructor, config, action_size):
-  """Constructor for the recurrent cell for the algorithm.
-
-  Args:
-    constructor: Callable returning the network as RNNCell.
-    config: Object providing configurations via attributes.
-    action_size: Integer indicating the amount of action dimensions.
-
-  Returns:
-    Created recurrent cell object.
-  """
-  mean_weights_initializer = (
-      tf.contrib.layers.variance_scaling_initializer(
-          factor=config.init_mean_factor))
-  logstd_initializer = tf.random_normal_initializer(
-      config.init_logstd, 1e-10)
-  network = constructor(
-      config.policy_layers, config.value_layers, action_size,
-      mean_weights_initializer=mean_weights_initializer,
-      logstd_initializer=logstd_initializer)
-  return network
-
-
 def initialize_variables(sess, saver, logdir, checkpoint=None, resume=None):
   """Initialize or restore variables from a checkpoint if available.
 

@@ -23,16 +23,13 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
+import functools
 
 import tensorflow as tf
 
 from agents.ppo import memory
 from agents.ppo import normalize
 from agents.ppo import utility
-
-
-_NetworkOutput = collections.namedtuple(
-    'NetworkOutput', 'policy, mean, logstd, value, state')
 
 
 class PPOAlgorithm(object):
@@ -70,15 +67,25 @@ class PPOAlgorithm(object):
     use_gpu = self._config.use_gpu and utility.available_gpus()
     with tf.device('/gpu:0' if use_gpu else '/cpu:0'):
       # Create network variables for later calls to reuse.
-      self._network(
+      action_size = self._batch_env.action.shape[1].value
+      self._network = tf.make_template(
+          'network', functools.partial(config.network, config, action_size))
+      output = self._network(
           tf.zeros_like(self._batch_env.observ)[:, None],
-          tf.ones(len(self._batch_env)), reuse=None)
-      cell = self._config.network(self._batch_env.action.shape[1].value)
+          tf.ones(len(self._batch_env)))
       with tf.variable_scope('ppo_temporary'):
         self._episodes = memory.EpisodeMemory(
             template, len(batch_env), config.max_length, 'episodes')
-        self._last_state = utility.create_nested_vars(
-            cell.zero_state(len(batch_env), tf.float32))
+        if output.state is None:
+          self._last_state = None
+        else:
+          # Ensure the batch dimension is set.
+          tf.contrib.framework.nest.map_structure(
+              lambda x: x.set_shape([len(batch_env)] + x.shape.as_list()[1:]),
+              output.state)
+          self._last_state = tf.contrib.framework.nest.map_structure(
+              lambda x: tf.Variable(lambda: tf.zeros_like(x), False),
+              output.state)
         self._last_action = tf.Variable(
             tf.zeros_like(self._batch_env.action), False, name='last_action')
         self._last_mean = tf.Variable(
@@ -102,7 +109,10 @@ class PPOAlgorithm(object):
       Summary tensor.
     """
     with tf.name_scope('begin_episode/'):
-      reset_state = utility.reinit_nested_vars(self._last_state, agent_indices)
+      if self._last_state is None:
+        reset_state = tf.no_op()
+      else:
+        reset_state = utility.reinit_nested_vars(self._last_state, agent_indices)
       reset_buffer = self._episodes.clear(agent_indices)
       with tf.control_dependencies([reset_state, reset_buffer]):
         return tf.constant('')
@@ -130,8 +140,12 @@ class PPOAlgorithm(object):
           tf.summary.histogram('action', action[:, 0]),
           tf.summary.histogram('logprob', logprob)]), str)
       # Remember current policy to append to memory in the experience callback.
+      if self._last_state is None:
+        assign_state = tf.no_op()
+      else:
+        assign_state = utility.assign_nested_vars(self._last_state, network.state)
       with tf.control_dependencies([
-          utility.assign_nested_vars(self._last_state, network.state),
+          assign_state,
           self._last_action.assign(action[:, 0]),
           self._last_mean.assign(network.mean[:, 0]),
           self._last_logstd.assign(network.logstd[:, 0])]):
@@ -523,36 +537,3 @@ class PPOAlgorithm(object):
       mask = tf.cast(range_[None, :] < length[:, None], tf.float32)
       masked = tensor * mask
       return tf.check_numerics(masked, 'masked')
-
-  def _network(self, observ, length=None, state=None, reuse=True):
-    """Compute the network output for a batched sequence of observations.
-
-    Optionally, the initial state can be specified. The weights should be
-    reused for all calls, except for the first one. Output is a named tuple
-    containing the policy as a TensorFlow distribution, the policy mean and log
-    standard deviation, the approximated state value, and the new recurrent
-    state.
-
-    Args:
-      observ: Sequences of observations.
-      length: Batch of sequence lengths.
-      state: Batch of initial recurrent states.
-      reuse: Python boolean whether to reuse previous variables.
-
-    Returns:
-      NetworkOutput tuple.
-    """
-    with tf.variable_scope('network', reuse=reuse):
-      observ = tf.convert_to_tensor(observ)
-      use_gpu = self._config.use_gpu and utility.available_gpus()
-      with tf.device('/gpu:0' if use_gpu else '/cpu:0'):
-        observ = tf.check_numerics(observ, 'observ')
-        cell = self._config.network(self._batch_env.action.shape[1].value)
-        (mean, logstd, value), state = tf.nn.dynamic_rnn(
-            cell, observ, length, state, tf.float32, swap_memory=True)
-      mean = tf.check_numerics(mean, 'mean')
-      logstd = tf.check_numerics(logstd, 'logstd')
-      value = tf.check_numerics(value, 'value')
-      policy = tf.contrib.distributions.MultivariateNormalDiag(
-          mean, tf.exp(logstd))
-      return _NetworkOutput(policy, mean, logstd, value, state)
