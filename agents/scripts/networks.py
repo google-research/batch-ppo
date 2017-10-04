@@ -12,109 +12,114 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Networks for the PPO algorithm defined as recurrent cells."""
+"""Network definitions for the PPO algorithm."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+import functools
+import operator
+
 import tensorflow as tf
 
 
-_MEAN_WEIGHTS_INITIALIZER = tf.contrib.layers.variance_scaling_initializer(
-    factor=0.1)
-_LOGSTD_INITIALIZER = tf.random_normal_initializer(-1, 1e-10)
+NetworkOutput = collections.namedtuple(
+    'NetworkOutput', 'policy, mean, logstd, value, state')
 
 
-class ForwardGaussianPolicy(tf.contrib.rnn.RNNCell):
+def feed_forward_gaussian(
+    config, action_size, observations, length, state=None):
   """Independent feed forward networks for policy and value.
 
   The policy network outputs the mean action and the log standard deviation
   is learned as independent parameter vector.
+
+  Args:
+    config: Configuration object.
+    action_size: Length of the action vector.
+    observations: Sequences of observations.
+    length: Batch of sequence lengths.
+    state: Batch of initial recurrent states.
+
+  Returns:
+    NetworkOutput tuple.
   """
-
-  def __init__(
-      self, policy_layers, value_layers, action_size,
-      mean_weights_initializer=_MEAN_WEIGHTS_INITIALIZER,
-      logstd_initializer=_LOGSTD_INITIALIZER):
-    self._policy_layers = policy_layers
-    self._value_layers = value_layers
-    self._action_size = action_size
-    self._mean_weights_initializer = mean_weights_initializer
-    self._logstd_initializer = logstd_initializer
-
-  @property
-  def state_size(self):
-    unused_state_size = 1
-    return unused_state_size
-
-  @property
-  def output_size(self):
-    return (self._action_size, self._action_size, tf.TensorShape([]))
-
-  def __call__(self, observation, state):
-    with tf.variable_scope('policy'):
-      x = tf.contrib.layers.flatten(observation)
-      for size in self._policy_layers:
-        x = tf.contrib.layers.fully_connected(x, size, tf.nn.relu)
-      mean = tf.contrib.layers.fully_connected(
-          x, self._action_size, tf.tanh,
-          weights_initializer=self._mean_weights_initializer)
-      logstd = tf.get_variable(
-          'logstd', mean.shape[1:], tf.float32, self._logstd_initializer)
-      logstd = tf.tile(
-          logstd[None, ...], [tf.shape(mean)[0]] + [1] * logstd.shape.ndims)
-    with tf.variable_scope('value'):
-      x = tf.contrib.layers.flatten(observation)
-      for size in self._value_layers:
-        x = tf.contrib.layers.fully_connected(x, size, tf.nn.relu)
-      value = tf.contrib.layers.fully_connected(x, 1, None)[:, 0]
-    return (mean, logstd, value), state
+  mean_weights_initializer = tf.contrib.layers.variance_scaling_initializer(
+      factor=config.init_mean_factor)
+  logstd_initializer = tf.random_normal_initializer(config.init_logstd, 1e-10)
+  flat_observations = tf.reshape(observations, [
+      tf.shape(observations)[0], tf.shape(observations)[1],
+      functools.reduce(operator.mul, observations.shape.as_list()[2:], 1)])
+  with tf.variable_scope('policy'):
+    x = flat_observations
+    for size in config.policy_layers:
+      x = tf.contrib.layers.fully_connected(x, size, tf.nn.relu)
+    mean = tf.contrib.layers.fully_connected(
+        x, action_size, tf.tanh,
+        weights_initializer=mean_weights_initializer)
+    logstd = tf.tile(tf.get_variable(
+        'logstd', mean.shape[2:], tf.float32, logstd_initializer)[None, None],
+        [tf.shape(mean)[0], tf.shape(mean)[1]] + [1] * (mean.shape.ndims - 2))
+  with tf.variable_scope('value'):
+    x = flat_observations
+    for size in config.value_layers:
+      x = tf.contrib.layers.fully_connected(x, size, tf.nn.relu)
+    value = tf.contrib.layers.fully_connected(x, 1, None)[:, 0]
+  mean = tf.check_numerics(mean, 'mean')
+  logstd = tf.check_numerics(logstd, 'logstd')
+  value = tf.check_numerics(value, 'value')
+  policy = tf.contrib.distributions.MultivariateNormalDiag(
+      mean, tf.exp(logstd))
+  return NetworkOutput(policy, mean, logstd, value, state)
 
 
-class RecurrentGaussianPolicy(tf.contrib.rnn.RNNCell):
+def recurrent_gaussian(
+    config, action_size, observations, length, state=None):
   """Independent recurrent policy and feed forward value networks.
 
   The policy network outputs the mean action and the log standard deviation
   is learned as independent parameter vector. The last policy layer is recurrent
   and uses a GRU cell.
+
+  Args:
+    config: Configuration object.
+    action_size: Length of the action vector.
+    observations: Sequences of observations.
+    length: Batch of sequence lengths.
+    state: Batch of initial recurrent states.
+
+  Returns:
+    NetworkOutput tuple.
   """
-
-  def __init__(
-      self, policy_layers, value_layers, action_size,
-      mean_weights_initializer=_MEAN_WEIGHTS_INITIALIZER,
-      logstd_initializer=_LOGSTD_INITIALIZER):
-    self._policy_layers = policy_layers
-    self._value_layers = value_layers
-    self._action_size = action_size
-    self._mean_weights_initializer = mean_weights_initializer
-    self._logstd_initializer = logstd_initializer
-    self._cell = tf.contrib.rnn.GRUBlockCell(100)
-
-  @property
-  def state_size(self):
-    return self._cell.state_size
-
-  @property
-  def output_size(self):
-    return (self._action_size, self._action_size, tf.TensorShape([]))
-
-  def __call__(self, observation, state):
-    with tf.variable_scope('policy'):
-      x = tf.contrib.layers.flatten(observation)
-      for size in self._policy_layers[:-1]:
-        x = tf.contrib.layers.fully_connected(x, size, tf.nn.relu)
-      x, state = self._cell(x, state)
-      mean = tf.contrib.layers.fully_connected(
-          x, self._action_size, tf.tanh,
-          weights_initializer=self._mean_weights_initializer)
-      logstd = tf.get_variable(
-          'logstd', mean.shape[1:], tf.float32, self._logstd_initializer)
-      logstd = tf.tile(
-          logstd[None, ...], [tf.shape(mean)[0]] + [1] * logstd.shape.ndims)
-    with tf.variable_scope('value'):
-      x = tf.contrib.layers.flatten(observation)
-      for size in self._value_layers:
-        x = tf.contrib.layers.fully_connected(x, size, tf.nn.relu)
-      value = tf.contrib.layers.fully_connected(x, 1, None)[:, 0]
-    return (mean, logstd, value), state
+  mean_weights_initializer = tf.contrib.layers.variance_scaling_initializer(
+      factor=config.init_mean_factor)
+  logstd_initializer = tf.random_normal_initializer(config.init_logstd, 1e-10)
+  cell = tf.contrib.rnn.GRUBlockCell(config.policy_layers[-1])
+  flat_observations = tf.reshape(observations, [
+      tf.shape(observations)[0], tf.shape(observations)[1],
+      functools.reduce(operator.mul, observations.shape.as_list()[2:], 1)])
+  with tf.variable_scope('policy'):
+    x = flat_observations
+    for size in config.policy_layers[:-1]:
+      x = tf.contrib.layers.fully_connected(x, size, tf.nn.relu)
+    x, state = tf.nn.dynamic_rnn(cell, x, length, state, tf.float32)
+    mean = tf.contrib.layers.fully_connected(
+        x, action_size, tf.tanh,
+        weights_initializer=mean_weights_initializer)
+    logstd = tf.tile(tf.get_variable(
+        'logstd', mean.shape[2:], tf.float32, logstd_initializer)[None, None],
+        [tf.shape(mean)[0], tf.shape(mean)[1]] + [1] * (mean.shape.ndims - 2))
+  with tf.variable_scope('value'):
+    x = flat_observations
+    for size in config.value_layers:
+      x = tf.contrib.layers.fully_connected(x, size, tf.nn.relu)
+    value = tf.contrib.layers.fully_connected(x, 1, None)[:, 0]
+  mean = tf.check_numerics(mean, 'mean')
+  logstd = tf.check_numerics(logstd, 'logstd')
+  value = tf.check_numerics(value, 'value')
+  policy = tf.contrib.distributions.MultivariateNormalDiag(
+      mean, tf.exp(logstd))
+  # assert state.shape.as_list()[0] is not None
+  return NetworkOutput(policy, mean, logstd, value, state)

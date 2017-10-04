@@ -68,7 +68,7 @@ modifying the code:
 | File | Content |
 | ---- | ------- |
 | `scripts/configs.py` | Experiment configurations specifying the tasks and algorithms. |
-| `scripts/networks.py` | Neural network models defined as [TensorFlow RNNCells][tf-rnn-cell]. |
+| `scripts/networks.py` | Neural network models. |
 | `scripts/train.py` | The executable file containing the training setup. |
 | `ppo/algorithm.py` | The TensorFlow graph for the PPO algorithm. |
 
@@ -79,8 +79,6 @@ python3 -m unittest discover -p "*_test.py"
 ```
 
 For further questions, please open an issue on Github.
-
-[tf-rnn-cell]: https://www.tensorflow.org/api_docs/python/tf/contrib/rnn/RNNCell
 
 Implementation
 --------------

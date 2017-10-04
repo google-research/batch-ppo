@@ -36,7 +36,7 @@ FLAGS = tf.app.flags.FLAGS
 class PPOTest(tf.test.TestCase):
 
   def test_no_crash_cheetah(self):
-    nets = networks.ForwardGaussianPolicy, networks.RecurrentGaussianPolicy
+    nets = networks.feed_forward_gaussian, networks.recurrent_gaussian
     for network in nets:
       config = self._define_config()
       with config.unlocked:
@@ -48,7 +48,7 @@ class PPOTest(tf.test.TestCase):
         float(score)
 
   def test_no_crash_ant(self):
-    nets = networks.ForwardGaussianPolicy, networks.RecurrentGaussianPolicy
+    nets = networks.feed_forward_gaussian, networks.recurrent_gaussian
     for network in nets:
       config = self._define_config()
       with config.unlocked:
@@ -60,7 +60,7 @@ class PPOTest(tf.test.TestCase):
         float(score)
 
   def test_no_crash_observation_shape(self):
-    nets = networks.ForwardGaussianPolicy, networks.RecurrentGaussianPolicy
+    nets = networks.feed_forward_gaussian, networks.recurrent_gaussian
     observ_shapes = (1,), (2, 3), (2, 3, 4)
     for network, observ_shape in itertools.product(nets, observ_shapes):
       config = self._define_config()
@@ -82,7 +82,7 @@ class PPOTest(tf.test.TestCase):
           min_duration=5, max_duration=25)
       config.max_length = 25
       config.steps = 200
-      config.network = networks.RecurrentGaussianPolicy
+      config.network = networks.recurrent_gaussian
     for score in train.train(config, env_processes=False):
       float(score)
 

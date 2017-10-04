@@ -23,7 +23,7 @@ import setuptools
 
 setuptools.setup(
     name='agents',
-    version='1.0.3',
+    version='1.1.0',
     description=(
         'Efficient TensorFlow implementation of reinforcement learning '
         'algorithms.'),
