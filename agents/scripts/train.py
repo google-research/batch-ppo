@@ -73,7 +73,7 @@ def _define_loop(graph, logdir, train_steps, eval_steps):
       graph.force_reset)
   loop.add_phase(
       'train', graph.done, graph.score, graph.summary, train_steps,
-      report_every=None,
+      report_every=train_steps,
       log_every=train_steps // 2,
       checkpoint_every=None,
       feed={graph.is_training: True})
