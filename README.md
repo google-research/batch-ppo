@@ -21,7 +21,7 @@ this project in your research:
 }
 ```
 
-Dependencies: Python 2/3, TensorFlow 1.3+, Gym, rumamel.yaml
+Dependencies: Python 2/3, TensorFlow 1.3+, Gym, ruamel.yaml
 
 [paper-agents]: https://arxiv.org/pdf/1709.02878.pdf
 [post-gym]: https://blog.openai.com/openai-gym-beta/
