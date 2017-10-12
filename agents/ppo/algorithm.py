@@ -131,7 +131,8 @@ class PPOAlgorithm(object):
       if self._last_state is None:
         state = None
       else:
-        state = tf.gather(self._last_state, agent_indices)
+        state = tf.contrib.framework.nest.map_structure(
+            lambda x: tf.gather(x, agent_indices), self._last_state)
       output = self._network(observ[:, None], tf.ones(observ.shape[0]), state)
       action = tf.cond(
           self._is_training, output.policy.sample, lambda: output.mean)
