@@ -178,7 +178,7 @@ def load_config(logdir):
         'contain a configuration file.')
     raise IOError(message)
   with tf.gfile.FastGFile(config_path, 'r') as file_:
-    config = yaml.load(file_)
+    config = yaml.load(file_, Loader=yaml.Loader)
   message = 'Resume run and write summaries and checkpoints to {}.'
   tf.logging.info(message.format(config.logdir))
   return config
