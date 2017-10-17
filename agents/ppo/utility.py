@@ -130,7 +130,7 @@ def diag_normal_kl(mean0, logstd0, mean1, logstd1):
 
 def diag_normal_logpdf(mean, logstd, loc):
   """Log density of a normal with diagonal covariance."""
-  constant = -0.5 * (math.log(2 * math.pi) + logstd)
+  constant = -0.5 * math.log(2 * math.pi) - logstd
   value = -0.5 * ((loc - mean) / tf.exp(logstd)) ** 2
   return tf.reduce_sum(constant + value, -1)
 
