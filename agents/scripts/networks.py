@@ -66,7 +66,7 @@ def feed_forward_gaussian(
     x = flat_observations
     for size in config.value_layers:
       x = tf.contrib.layers.fully_connected(x, size, tf.nn.relu)
-    value = tf.contrib.layers.fully_connected(x, 1, None)[:, 0]
+    value = tf.contrib.layers.fully_connected(x, 1, None)[..., 0]
   mean = tf.check_numerics(mean, 'mean')
   logstd = tf.check_numerics(logstd, 'logstd')
   value = tf.check_numerics(value, 'value')
@@ -115,7 +115,7 @@ def recurrent_gaussian(
     x = flat_observations
     for size in config.value_layers:
       x = tf.contrib.layers.fully_connected(x, size, tf.nn.relu)
-    value = tf.contrib.layers.fully_connected(x, 1, None)[:, 0]
+    value = tf.contrib.layers.fully_connected(x, 1, None)[..., 0]
   mean = tf.check_numerics(mean, 'mean')
   logstd = tf.check_numerics(logstd, 'logstd')
   value = tf.check_numerics(value, 'value')
