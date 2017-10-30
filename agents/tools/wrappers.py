@@ -302,14 +302,11 @@ class ExternalProcess(object):
   """Step environment in a separate process for lock free paralellism."""
 
   # Message types for communication via the pipe.
-  _ACTION = 1
-  _RESET = 2
-  _CLOSE = 3
-  _ATTRIBUTE = 4
-  _TRANSITION = 5
-  _OBSERV = 6
-  _EXCEPTION = 7
-  _VALUE = 8
+  _ACCESS = 1
+  _CALL = 2
+  _RESULT = 3
+  _EXCEPTION = 4
+  _CLOSE = 5
 
   def __init__(self, constructor):
     """Step environment in a separate process for lock free paralellism.
@@ -358,8 +355,33 @@ class ExternalProcess(object):
     Returns:
       Value of the attribute.
     """
-    self._conn.send((self._ATTRIBUTE, name))
-    return self._receive(self._VALUE)
+    self._conn.send((self._ACCESS, name))
+    return self._receive()
+
+  def call(self, name, *args, **kwargs):
+    """Asynchronously call a method of the external environment.
+
+    Args:
+      name: Name of the method to call.
+      *args: Positional arguments to forward to the method.
+      **kwargs: Keyword arguments to forward to the method.
+
+    Returns:
+      Promise object that blocks and provides the return value when called.
+    """
+    payload = name, args, kwargs
+    self._conn.send((self._CALL, payload))
+    return self._receive
+
+  def close(self):
+    """Send a close message to the external process and join it."""
+    try:
+      self._conn.send((self._CLOSE, None))
+      self._conn.close()
+    except IOError:
+      # The connection was already closed.
+      pass
+    self._process.join()
 
   def step(self, action, blocking=True):
     """Step the environment.
@@ -372,11 +394,11 @@ class ExternalProcess(object):
       Transition tuple when blocking, otherwise callable that returns the
       transition tuple.
     """
-    self._conn.send((self._ACTION, action))
+    promise = self.call('step', action)
     if blocking:
-      return self._receive(self._TRANSITION)
+      return promise()
     else:
-      return functools.partial(self._receive, self._TRANSITION)
+      return promise
 
   def reset(self, blocking=True):
     """Reset the environment.
@@ -388,31 +410,18 @@ class ExternalProcess(object):
       New observation when blocking, otherwise callable that returns the new
       observation.
     """
-    self._conn.send((self._RESET, None))
+    promise = self.call('reset')
     if blocking:
-      return self._receive(self._OBSERV)
+      return promise()
     else:
-      return functools.partial(self._receive, self._OBSERV)
+      return promise
 
-  def close(self):
-    """Send a close message to the external process and join it."""
-    try:
-      self._conn.send((self._CLOSE, None))
-      self._conn.close()
-    except IOError:
-      # The connection was already closed.
-      pass
-    self._process.join()
-
-  def _receive(self, expected_message):
+  def _receive(self):
     """Wait for a message from the worker process and return its payload.
-
-    Args:
-      expected_message: Type of the expected message.
 
     Raises:
       Exception: An exception was raised inside the worker process.
-      KeyError: The reveived message is not of the expected type.
+      KeyError: The reveived message is of an unknown type.
 
     Returns:
       Payload object of the message.
@@ -422,7 +431,7 @@ class ExternalProcess(object):
     if message == self._EXCEPTION:
       stacktrace = payload
       raise Exception(stacktrace)
-    if message == expected_message:
+    if message == self._RESULT:
       return payload
     raise KeyError('Received message of unexpected type {}'.format(message))
 
@@ -443,17 +452,15 @@ class ExternalProcess(object):
           message, payload = conn.recv()
         except (EOFError, KeyboardInterrupt):
           break
-        if message == self._ACTION:
-          action = payload
-          conn.send((self._TRANSITION, env.step(action)))
-          continue
-        if message == self._RESET:
-          assert payload is None
-          conn.send((self._OBSERV, env.reset()))
-          continue
-        if message == self._ATTRIBUTE:
+        if message == self._ACCESS:
           name = payload
-          conn.send((self._VALUE, getattr(env, name)))
+          result = getattr(env, name)
+          conn.send((self._RESULT, result))
+          continue
+        if message == self._CALL:
+          name, args, kwargs = payload
+          result = getattr(env, name)(*args, **kwargs)
+          conn.send((self._RESULT, result))
           continue
         if message == self._CLOSE:
           assert payload is None
@@ -461,8 +468,8 @@ class ExternalProcess(object):
         raise KeyError('Received message of unknown type {}'.format(message))
     except Exception:  # pylint: disable=broad-except
       stacktrace = ''.join(traceback.format_exception(*sys.exc_info()))
-      conn.send((self._EXCEPTION, stacktrace))
       tf.logging.error('Error in environment process: {}'.format(stacktrace))
+      conn.send((self._EXCEPTION, stacktrace))
     conn.close()
 
 
