@@ -260,11 +260,9 @@ class PPOAlgorithm(object):
         length = tf.identity(length)
       observ = self._observ_filter.transform(observ)
       reward = self._reward_filter.transform(reward)
-      policy_summary = self._update_policy(
+      update_summary = self._perform_update_steps(
           observ, action, old_mean, old_logstd, reward, length)
-      with tf.control_dependencies([policy_summary]):
-        value_summary = self._update_value(observ, reward, length)
-      with tf.control_dependencies([value_summary]):
+      with tf.control_dependencies([update_summary]):
         penalty_summary = self._adjust_penalty(
             observ, old_mean, old_logstd, length)
       with tf.control_dependencies([penalty_summary]):
@@ -274,54 +272,101 @@ class PPOAlgorithm(object):
         weight_summary = utility.variable_summaries(
             tf.trainable_variables(), self._config.weight_summaries)
         return tf.summary.merge([
-            policy_summary, value_summary, penalty_summary, weight_summary])
+            update_summary, penalty_summary, weight_summary])
 
-  def _update_value(self, observ, reward, length):
-    """Perform multiple update steps of the value baseline.
+  def _perform_update_steps(
+        self, observ, action, old_mean, old_logstd, reward, length):
+    """Perform multiple update steps of value function and policy.
 
-    We need to decide for the summary of one iteration, and thus choose the one
-    after half of the iterations.
+    The advantage is computed once at the beginning and shared across
+    iterations. We need to decide for the summary of one iteration, and thus
+    choose the one after half of the iterations.
 
     Args:
       observ: Sequences of observations.
-      reward: Sequences of reward.
+      action: Sequences of actions.
+      old_mean: Sequences of action means of the behavioral policy.
+      old_logstd: Sequences of action log stddevs of the behavioral policy.
+      reward: Sequences of rewards.
       length: Batch of sequence lengths.
 
     Returns:
       Summary tensor.
     """
-    with tf.name_scope('update_value'):
-      loss, summary = tf.scan(
-          lambda _1, _2: self._update_value_step(observ, reward, length),
-          tf.range(self._config.update_epochs_value),
-          [0., ''], parallel_iterations=1)
-      print_loss = tf.Print(0, [tf.reduce_mean(loss)], 'value loss: ')
-      with tf.control_dependencies([loss, print_loss]):
-        return summary[self._config.update_epochs_value // 2]
+    return_ = utility.discounted_return(
+        reward, length, self._config.discount)
+    value = self._network(observ, length).value
+    if self._config.gae_lambda:
+      advantage = utility.lambda_return(
+          reward, value, length, self._config.discount,
+          self._config.gae_lambda)
+    else:
+      advantage = return_ - value
+    mean, variance = tf.nn.moments(advantage, axes=[0, 1], keep_dims=True)
+    advantage = (advantage - mean) / (tf.sqrt(variance) + 1e-8)
+    advantage = tf.Print(
+        advantage, [tf.reduce_mean(return_), tf.reduce_mean(value)],
+        'return and value: ')
+    advantage = tf.Print(
+        advantage, [tf.reduce_mean(advantage)],
+        'normalized advantage: ')
+    # pylint: disable=g-long-lambda
+    value_loss, policy_loss, summary = tf.scan(
+        lambda _1, _2: self._update_step(
+            observ, action, old_mean, old_logstd, reward, advantage, length),
+        tf.range(self._config.update_epochs),
+        [0., 0., ''], parallel_iterations=1)
+    print_losses = tf.group(
+        tf.Print(0, [tf.reduce_mean(value_loss)], 'value loss: '),
+        tf.Print(0, [tf.reduce_mean(policy_loss)], 'policy loss: '))
+    with tf.control_dependencies([value_loss, policy_loss, print_losses]):
+      return summary[self._config.update_epochs // 2]
 
-  def _update_value_step(self, observ, reward, length):
-    """Compute the current value loss and perform a gradient update step.
+  def _update_step(
+      self, observ, action, old_mean, old_logstd, reward, advantage, length):
+    """Compute the current combined loss and perform a gradient update step.
 
     Args:
       observ: Sequences of observations.
+      action: Sequences of actions.
+      old_mean: Sequences of action means of the behavioral policy.
+      old_logstd: Sequences of action log stddevs of the behavioral policy.
       reward: Sequences of reward.
+      advantage: Sequences of advantages.
       length: Batch of sequence lengths.
 
     Returns:
-      Tuple of loss tensor and summary tensor.
+      Tuple of value loss, policy loss, and summary tensor.
     """
-    loss, summary = self._value_loss(observ, reward, length)
-    gradients, variables = (
-        zip(*self._value_optimizer.compute_gradients(loss)))
-    optimize = self._value_optimizer.apply_gradients(
-        zip(gradients, variables))
+    value_loss, value_summary = self._value_loss(observ, reward, length)
+    network = self._network(observ, length)
+    policy_loss, policy_summary = self._policy_loss(
+        network.mean, network.logstd, old_mean, old_logstd, action,
+        advantage, length)
+    value_gradients, value_variables = (
+        zip(*self._value_optimizer.compute_gradients(value_loss)))
+    policy_gradients, policy_variables = (
+        zip(*self._policy_optimizer.compute_gradients(policy_loss)))
+    all_gradients = [
+        gradient for gradient in value_gradients + policy_gradients
+        if gradient is not None]
+    with tf.control_dependencies(all_gradients):
+      optimize_value = self._value_optimizer.apply_gradients(
+          zip(value_gradients, value_variables))
+      optimize_policy = self._policy_optimizer.apply_gradients(
+          zip(policy_gradients, policy_variables))
     summary = tf.summary.merge([
-        summary,
-        tf.summary.scalar('gradient_norm', tf.global_norm(gradients)),
+        value_summary, policy_summary,
+        tf.summary.scalar(
+            'value_gradient_norm', tf.global_norm(value_gradients)),
+        tf.summary.scalar(
+            'policy_gradient_norm', tf.global_norm(policy_gradients)),
         utility.gradient_summaries(
-            zip(gradients, variables), dict(value=r'.*'))])
-    with tf.control_dependencies([optimize]):
-      return [tf.identity(loss), tf.identity(summary)]
+            zip(value_gradients, value_variables), dict(value=r'.*')),
+        utility.gradient_summaries(
+            zip(policy_gradients, policy_variables), dict(policy=r'.*'))])
+    with tf.control_dependencies([optimize_value, optimize_policy]):
+      return [tf.identity(x) for x in (value_loss, policy_loss, summary)]
 
   def _value_loss(self, observ, reward, length):
     """Compute the loss function for the value baseline.
@@ -348,84 +393,6 @@ class PPOAlgorithm(object):
           tf.summary.scalar('avg_value_loss', tf.reduce_mean(value_loss))])
       value_loss = tf.reduce_mean(value_loss)
       return tf.check_numerics(value_loss, 'value_loss'), summary
-
-  def _update_policy(
-      self, observ, action, old_mean, old_logstd, reward, length):
-    """Perform multiple update steps of the policy.
-
-    The advantage is computed once at the beginning and shared across
-    iterations. We need to decide for the summary of one iteration, and thus
-    choose the one after half of the iterations.
-
-    Args:
-      observ: Sequences of observations.
-      action: Sequences of actions.
-      old_mean: Sequences of action means of the behavioral policy.
-      old_logstd: Sequences of action log stddevs of the behavioral policy.
-      reward: Sequences of rewards.
-      length: Batch of sequence lengths.
-
-    Returns:
-      Summary tensor.
-    """
-    with tf.name_scope('update_policy'):
-      return_ = utility.discounted_return(
-          reward, length, self._config.discount)
-      value = self._network(observ, length).value
-      if self._config.gae_lambda:
-        advantage = utility.lambda_return(
-            reward, value, length, self._config.discount,
-            self._config.gae_lambda)
-      else:
-        advantage = return_ - value
-      mean, variance = tf.nn.moments(advantage, axes=[0, 1], keep_dims=True)
-      advantage = (advantage - mean) / (tf.sqrt(variance) + 1e-8)
-      advantage = tf.Print(
-          advantage, [tf.reduce_mean(return_), tf.reduce_mean(value)],
-          'return and value: ')
-      advantage = tf.Print(
-          advantage, [tf.reduce_mean(advantage)],
-          'normalized advantage: ')
-      # pylint: disable=g-long-lambda
-      loss, summary = tf.scan(
-          lambda _1, _2: self._update_policy_step(
-              observ, action, old_mean, old_logstd, advantage, length),
-          tf.range(self._config.update_epochs_policy),
-          [0., ''], parallel_iterations=1)
-      print_loss = tf.Print(0, [tf.reduce_mean(loss)], 'policy loss: ')
-      with tf.control_dependencies([loss, print_loss]):
-        return summary[self._config.update_epochs_policy // 2]
-
-  def _update_policy_step(
-      self, observ, action, old_mean, old_logstd, advantage, length):
-    """Compute the current policy loss and perform a gradient update step.
-
-    Args:
-      observ: Sequences of observations.
-      action: Sequences of actions.
-      old_mean: Sequences of action means of the behavioral policy.
-      old_logstd: Sequences of action log stddevs of the behavioral policy.
-      advantage: Sequences of advantages.
-      length: Batch of sequence lengths.
-
-    Returns:
-      Tuple of loss tensor and summary tensor.
-    """
-    network = self._network(observ, length)
-    loss, summary = self._policy_loss(
-        network.mean, network.logstd, old_mean, old_logstd, action,
-        advantage, length)
-    gradients, variables = (
-        zip(*self._policy_optimizer.compute_gradients(loss)))
-    optimize = self._policy_optimizer.apply_gradients(
-        zip(gradients, variables))
-    summary = tf.summary.merge([
-        summary,
-        tf.summary.scalar('gradient_norm', tf.global_norm(gradients)),
-        utility.gradient_summaries(
-            zip(gradients, variables), dict(policy=r'.*'))])
-    with tf.control_dependencies([optimize]):
-      return [tf.identity(loss), tf.identity(summary)]
 
   def _policy_loss(
       self, mean, logstd, old_mean, old_logstd, action, advantage, length):
