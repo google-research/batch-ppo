@@ -94,10 +94,8 @@ class PPOAlgorithm(object):
             tf.zeros_like(self._batch_env.action), False, name='last_logstd')
     self._penalty = tf.Variable(
         self._config.kl_init_penalty, False, dtype=tf.float32)
-    self._policy_optimizer = self._config.policy_optimizer(
-        self._config.policy_lr, name='policy_optimizer')
-    self._value_optimizer = self._config.value_optimizer(
-        self._config.value_lr, name='value_optimizer')
+    self._optimizer = getattr(tf.train, self._config.optimizer)(
+        self._config.learning_rate)
 
   def begin_episode(self, agent_indices):
     """Reset the recurrent states and stored episode.
@@ -344,17 +342,13 @@ class PPOAlgorithm(object):
         network.mean, network.logstd, old_mean, old_logstd, action,
         advantage, length)
     value_gradients, value_variables = (
-        zip(*self._value_optimizer.compute_gradients(value_loss)))
+        zip(*self._optimizer.compute_gradients(value_loss)))
     policy_gradients, policy_variables = (
-        zip(*self._policy_optimizer.compute_gradients(policy_loss)))
-    all_gradients = [
-        gradient for gradient in value_gradients + policy_gradients
-        if gradient is not None]
-    with tf.control_dependencies(all_gradients):
-      optimize_value = self._value_optimizer.apply_gradients(
-          zip(value_gradients, value_variables))
-      optimize_policy = self._policy_optimizer.apply_gradients(
-          zip(policy_gradients, policy_variables))
+        zip(*self._optimizer.compute_gradients(policy_loss)))
+    all_gradients = value_gradients + policy_gradients
+    all_variables = value_variables + policy_variables
+    optimize = self._optimizer.apply_gradients(
+        zip(all_gradients, all_variables))
     summary = tf.summary.merge([
         value_summary, policy_summary,
         tf.summary.scalar(
@@ -365,7 +359,7 @@ class PPOAlgorithm(object):
             zip(value_gradients, value_variables), dict(value=r'.*')),
         utility.gradient_summaries(
             zip(policy_gradients, policy_variables), dict(policy=r'.*'))])
-    with tf.control_dependencies([optimize_value, optimize_policy]):
+    with tf.control_dependencies([optimize]):
       return [tf.identity(x) for x in (value_loss, policy_loss, summary)]
 
   def _value_loss(self, observ, reward, length):

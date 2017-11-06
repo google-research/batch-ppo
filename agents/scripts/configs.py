@@ -40,13 +40,10 @@ def default():
   init_mean_factor = 0.05
   init_logstd = -1
   # Optimization
-  update_every = 25
-  policy_optimizer = 'AdamOptimizer'
-  value_optimizer = 'AdamOptimizer'
-  update_epochs_policy = 50
-  update_epochs_value = 50
-  policy_lr = 1e-4
-  value_lr = 3e-4
+  update_every = 30
+  update_epochs = 25
+  optimizer = 'AdamOptimizer'
+  learning_rate = 1e-4
   # Losses
   discount = 0.985
   kl_target = 1e-2
