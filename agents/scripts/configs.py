@@ -28,8 +28,8 @@ def default():
   """Default configuration for PPO."""
   # General
   algorithm = ppo.PPOAlgorithm
-  num_agents = 10
-  eval_episodes = 25
+  num_agents = 30
+  eval_episodes = 30
   use_gpu = False
   # Network
   network = networks.feed_forward_gaussian
@@ -37,7 +37,7 @@ def default():
       all=r'.*', policy=r'.*/policy/.*', value=r'.*/value/.*')
   policy_layers = 200, 100
   value_layers = 200, 100
-  init_mean_factor = 0.05
+  init_mean_factor = 0.1
   init_logstd = -1
   # Optimization
   update_every = 30
@@ -45,7 +45,7 @@ def default():
   optimizer = 'AdamOptimizer'
   learning_rate = 1e-4
   # Losses
-  discount = 0.985
+  discount = 0.995
   kl_target = 1e-2
   kl_cutoff_factor = 2
   kl_cutoff_coef = 1000
@@ -59,7 +59,19 @@ def pendulum():
   # Environment
   env = 'Pendulum-v0'
   max_length = 200
-  steps = 1e6  # 1M
+  steps = 2e6  # 2M
+  return locals()
+
+
+def reacher():
+  """Configuration for MuJoCo's reacher task."""
+  locals().update(default())
+  # Environment
+  env = 'Reacher-v1'
+  max_length = 1000
+  steps = 5e6  # 5M
+  discount = 0.985
+  update_every = 60
   return locals()
 
 
@@ -70,6 +82,7 @@ def cheetah():
   env = 'HalfCheetah-v1'
   max_length = 1000
   steps = 1e7  # 10M
+  discount = 0.99
   return locals()
 
 
@@ -83,23 +96,14 @@ def walker():
   return locals()
 
 
-def reacher():
-  """Configuration for MuJoCo's reacher task."""
-  locals().update(default())
-  # Environment
-  env = 'Reacher-v1'
-  max_length = 1000
-  steps = 1e7  # 10M
-  return locals()
-
-
 def hopper():
   """Configuration for MuJoCo's hopper task."""
   locals().update(default())
   # Environment
   env = 'Hopper-v1'
   max_length = 1000
-  steps = 2e7  # 20M
+  steps = 1e7  # 10M
+  update_every = 60
   return locals()
 
 
@@ -109,7 +113,7 @@ def ant():
   # Environment
   env = 'Ant-v1'
   max_length = 1000
-  steps = 5e7  # 50M
+  steps = 2e7  # 20M
   return locals()
 
 
@@ -120,4 +124,5 @@ def humanoid():
   env = 'Humanoid-v1'
   max_length = 1000
   steps = 5e7  # 50M
+  update_every = 60
   return locals()
