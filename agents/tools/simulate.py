@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""In-graph simulation step of a vecrotized algorithm with environments."""
+"""In-graph simulation step of a vectorized algorithm with environments."""
 
 from __future__ import absolute_import
 from __future__ import division
