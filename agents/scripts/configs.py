@@ -20,6 +20,8 @@ from __future__ import print_function
 
 # pylint: disable=unused-variable
 
+import tensorflow as tf
+
 from agents import ppo
 from agents.scripts import networks
 
@@ -42,7 +44,7 @@ def default():
   # Optimization
   update_every = 30
   update_epochs = 25
-  optimizer = 'AdamOptimizer'
+  optimizer = tf.train.AdamOptimizer
   learning_rate = 1e-4
   # Losses
   discount = 0.995
