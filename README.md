@@ -72,10 +72,11 @@ modifying the code:
 | `scripts/train.py` | The executable file containing the training setup. |
 | `ppo/algorithm.py` | The TensorFlow graph for the PPO algorithm. |
 
-To run all unit tests, type:
+To run unit tests and linting, type:
 
 ```shell
 python3 -m unittest discover -p "*_test.py"
+python3 -m pylint agents
 ```
 
 For further questions, please open an issue on Github.

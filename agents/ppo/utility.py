@@ -31,7 +31,7 @@ def reinit_nested_vars(variables, indices=None):
 
   Args:
     variables: Nested tuple or list of variaables.
-    indices: Indices along the first dimension to reset, defaults to all.
+    indices: Batch indices to reset, defaults to all.
 
   Returns:
     Operation.
@@ -52,6 +52,7 @@ def assign_nested_vars(variables, tensors, indices=None):
   Args:
     variables: Nested tuple or list of variables to update.
     tensors: Nested tuple or list of tensors to assign.
+    indices: Batch indices to assign to; default to all.
 
   Returns:
     Operation.
@@ -204,6 +205,7 @@ def variable_summaries(vars_, groups=None, scope='weights'):
     if name not in grouped:
       tf.logging.warn("No variables matching '{}' group.".format(name))
   summaries = []
+  # pylint: disable=redefined-argument-from-local
   for name, vars_ in grouped.items():
     vars_ = [tf.reshape(var, [-1]) for var in vars_]
     vars_ = tf.concat(vars_, 0)

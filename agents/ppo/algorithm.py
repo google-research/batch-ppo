@@ -22,7 +22,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import collections
 import functools
 
 import tensorflow as tf
@@ -83,6 +82,7 @@ class PPOAlgorithm(object):
           tf.contrib.framework.nest.map_structure(
               lambda x: x.set_shape([len(batch_env)] + x.shape.as_list()[1:]),
               output.state)
+          # pylint: disable=undefined-variable
           self._last_state = tf.contrib.framework.nest.map_structure(
               lambda x: tf.Variable(lambda: tf.zeros_like(x), False),
               output.state)
@@ -101,7 +101,7 @@ class PPOAlgorithm(object):
     """Reset the recurrent states and stored episode.
 
     Args:
-      agent_indices: 1D tensor of batch indices for agents starting an episode.
+      agent_indices: Tensor containing current batch indices.
 
     Returns:
       Summary tensor.
@@ -110,7 +110,8 @@ class PPOAlgorithm(object):
       if self._last_state is None:
         reset_state = tf.no_op()
       else:
-        reset_state = utility.reinit_nested_vars(self._last_state, agent_indices)
+        reset_state = utility.reinit_nested_vars(
+            self._last_state, agent_indices)
       reset_buffer = self._episodes.clear(agent_indices)
       with tf.control_dependencies([reset_state, reset_buffer]):
         return tf.constant('')
@@ -119,6 +120,7 @@ class PPOAlgorithm(object):
     """Compute batch of actions and a summary for a batch of observation.
 
     Args:
+      agent_indices: Tensor containing current batch indices.
       observ: Tensor of a batch of observations for all agents.
 
     Returns:
@@ -149,9 +151,12 @@ class PPOAlgorithm(object):
             self._last_state, output.state, agent_indices)
       with tf.control_dependencies([
           assign_state,
-          tf.scatter_update(self._last_action, agent_indices, action[:, 0]),
-          tf.scatter_update(self._last_mean, agent_indices, output.mean[:, 0]),
-          tf.scatter_update(self._last_logstd, agent_indices, output.logstd[:, 0])]):
+          tf.scatter_update(
+              self._last_action, agent_indices, action[:, 0]),
+          tf.scatter_update(
+              self._last_mean, agent_indices, output.mean[:, 0]),
+          tf.scatter_update(
+              self._last_logstd, agent_indices, output.logstd[:, 0])]):
         return tf.check_numerics(action[:, 0], 'action'), tf.identity(summary)
 
   def experience(
@@ -163,6 +168,7 @@ class PPOAlgorithm(object):
     returned if requested at this step.
 
     Args:
+      agent_indices: Tensor containing current batch indices.
       observ: Batch tensor of observations.
       action: Batch tensor of actions.
       reward: Batch tensor of rewards.
@@ -175,7 +181,9 @@ class PPOAlgorithm(object):
     with tf.name_scope('experience/'):
       return tf.cond(
           self._is_training,
-          lambda: self._define_experience(agent_indices, observ, action, reward), str)
+          # pylint: disable=g-long-lambda
+          lambda: self._define_experience(
+              agent_indices, observ, action, reward), str)
 
   def _define_experience(self, agent_indices, observ, action, reward):
     """Implement the branch of experience() entered during training."""
@@ -213,7 +221,7 @@ class PPOAlgorithm(object):
     this step.
 
     Args:
-      agent_indices: 1D tensor of batch indices for agents starting an episode.
+      agent_indices: Tensor containing current batch indices.
 
     Returns:
        Summary tensor.
@@ -273,7 +281,7 @@ class PPOAlgorithm(object):
             update_summary, penalty_summary, weight_summary])
 
   def _perform_update_steps(
-        self, observ, action, old_mean, old_logstd, reward, length):
+      self, observ, action, old_mean, old_logstd, reward, length):
     """Perform multiple update steps of value function and policy.
 
     The advantage is computed once at the beginning and shared across

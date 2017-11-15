@@ -66,11 +66,11 @@ class BatchEnv(object):
     """
     return getattr(self._envs[0], name)
 
-  def step(self, action):
+  def step(self, actions):
     """Forward a batch of actions to the wrapped environments.
 
     Args:
-      action: Batched action to apply to the environment.
+      actions: Batched action to apply to the environment.
 
     Raises:
       ValueError: Invalid actions.
@@ -78,7 +78,6 @@ class BatchEnv(object):
     Returns:
       Batch of observations, rewards, and done flags.
     """
-    actions = action
     for index, (env, action) in enumerate(zip(self._envs, actions)):
       if not env.action_space.contains(action):
         message = 'Invalid action at index {}: {}'

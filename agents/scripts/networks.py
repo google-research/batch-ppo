@@ -30,7 +30,7 @@ NetworkOutput = collections.namedtuple(
 
 
 def feed_forward_gaussian(
-    config, action_size, observations, length, state=None):
+    config, action_size, observations, unused_length, state=None):
   """Independent feed forward networks for policy and value.
 
   The policy network outputs the mean action and the log standard deviation
@@ -40,7 +40,7 @@ def feed_forward_gaussian(
     config: Configuration object.
     action_size: Length of the action vector.
     observations: Sequences of observations.
-    length: Batch of sequence lengths.
+    unused_length: Batch of sequence lengths.
     state: Batch of initial recurrent states.
 
   Returns:
@@ -59,8 +59,10 @@ def feed_forward_gaussian(
     mean = tf.contrib.layers.fully_connected(
         x, action_size, tf.tanh,
         weights_initializer=mean_weights_initializer)
-    logstd = tf.tile(tf.get_variable(
-        'logstd', mean.shape[2:], tf.float32, logstd_initializer)[None, None],
+    logstd = tf.get_variable(
+        'logstd', mean.shape[2:], tf.float32, logstd_initializer)
+    logstd = tf.tile(
+        logstd[None, None],
         [tf.shape(mean)[0], tf.shape(mean)[1]] + [1] * (mean.shape.ndims - 2))
   with tf.variable_scope('value'):
     x = flat_observations
@@ -80,8 +82,8 @@ def recurrent_gaussian(
   """Independent recurrent policy and feed forward value networks.
 
   The policy network outputs the mean action and the log standard deviation
-  is learned as independent parameter vector. The last policy layer is recurrent
-  and uses a GRU cell.
+  is learned as independent parameter vector. The last policy layer is
+  recurrent and uses a GRU cell.
 
   Args:
     config: Configuration object.
@@ -108,8 +110,10 @@ def recurrent_gaussian(
     mean = tf.contrib.layers.fully_connected(
         x, action_size, tf.tanh,
         weights_initializer=mean_weights_initializer)
-    logstd = tf.tile(tf.get_variable(
-        'logstd', mean.shape[2:], tf.float32, logstd_initializer)[None, None],
+    logstd = tf.get_variable(
+        'logstd', mean.shape[2:], tf.float32, logstd_initializer)
+    logstd = tf.tile(
+        logstd[None, None],
         [tf.shape(mean)[0], tf.shape(mean)[1]] + [1] * (mean.shape.ndims - 2))
   with tf.variable_scope('value'):
     x = flat_observations

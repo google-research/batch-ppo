@@ -39,8 +39,8 @@ class EpisodeMemory(object):
     """
     self._capacity = capacity
     self._max_length = max_length
-    with tf.variable_scope(scope) as scope:
-      self._scope = scope
+    with tf.variable_scope(scope) as var_scope:
+      self._scope = var_scope
       self._length = tf.Variable(tf.zeros(capacity, tf.int32), False)
       self._buffers = [
           tf.Variable(tf.zeros(

@@ -79,7 +79,7 @@ class MockEnvironmentCrashInStep(tools.MockEnvironment):
         min_duration=crash_at_step + 1, max_duration=crash_at_step + 1)
     self._crash_at_step = crash_at_step
 
-  def step(self, *args, **kwargs):
+  def step(self, *args, **kwargs):  # pylint: disable=arguments-differ
     transition = super(MockEnvironmentCrashInStep, self).step(*args, **kwargs)
     if self.steps[-1] == self._crash_at_step:
       raise RuntimeError()
