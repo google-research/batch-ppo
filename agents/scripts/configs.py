@@ -22,14 +22,14 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from agents import ppo
+from agents import algorithms
 from agents.scripts import networks
 
 
 def default():
   """Default configuration for PPO."""
   # General
-  algorithm = ppo.PPOAlgorithm
+  algorithm = algorithms.PPO
   num_agents = 30
   eval_episodes = 30
   use_gpu = False

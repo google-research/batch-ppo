@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Main package of TensorFlow agents."""
+"""Reusable parts for building agents."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from . import algorithms
-from . import scripts
-from . import tools
+from .normalize import StreamingNormalize
+from .memory import EpisodeMemory

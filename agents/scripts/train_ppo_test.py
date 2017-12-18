@@ -23,7 +23,7 @@ import itertools
 
 import tensorflow as tf
 
-from agents import ppo
+from agents import algorithms
 from agents import tools
 from agents.scripts import configs
 from agents.scripts import networks
@@ -91,7 +91,7 @@ class PPOTest(tf.test.TestCase):
     locals().update(configs.default())
     # pylint: disable=unused-variable
     # General
-    algorithm = ppo.PPOAlgorithm
+    algorithm = algorithms.PPO
     num_agents = 2
     update_every = 4
     use_gpu = False

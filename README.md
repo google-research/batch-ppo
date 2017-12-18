@@ -70,7 +70,7 @@ modifying the code:
 | `scripts/configs.py` | Experiment configurations specifying the tasks and algorithms. |
 | `scripts/networks.py` | Neural network models. |
 | `scripts/train.py` | The executable file containing the training setup. |
-| `ppo/algorithm.py` | The TensorFlow graph for the PPO algorithm. |
+| `algorithms/ppo/ppo.py` | The TensorFlow graph for the PPO algorithm. |
 
 To run unit tests and linting, type:
 

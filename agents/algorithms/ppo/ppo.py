@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Proximal Policy Optimization algorithm.
+"""Proximal Policy Optimization agent.
 
 Based on John Schulman's implementation in Python and Theano:
 https://github.com/joschu/modular_rl/blob/master/modular_rl/ppo.py
@@ -26,12 +26,11 @@ import functools
 
 import tensorflow as tf
 
-from agents.ppo import memory
-from agents.ppo import normalize
-from agents.ppo import utility
+from agents import parts
+from agents.algorithms.ppo import utility
 
 
-class PPOAlgorithm(object):
+class PPO(object):
   """A vectorized implementation of the PPO algorithm by John Schulman."""
 
   def __init__(self, batch_env, step, is_training, should_log, config):
@@ -49,10 +48,10 @@ class PPOAlgorithm(object):
     self._is_training = is_training
     self._should_log = should_log
     self._config = config
-    self._observ_filter = normalize.StreamingNormalize(
+    self._observ_filter = parts.StreamingNormalize(
         self._batch_env.observ[0], center=True, scale=True, clip=5,
         name='normalize_observ')
-    self._reward_filter = normalize.StreamingNormalize(
+    self._reward_filter = parts.StreamingNormalize(
         self._batch_env.reward[0], center=False, scale=True, clip=10,
         name='normalize_reward')
     # Memory stores tuple of observ, action, mean, logstd, reward.
@@ -60,7 +59,7 @@ class PPOAlgorithm(object):
         self._batch_env.observ[0], self._batch_env.action[0],
         self._batch_env.action[0], self._batch_env.action[0],
         self._batch_env.reward[0])
-    self._memory = memory.EpisodeMemory(
+    self._memory = parts.EpisodeMemory(
         template, config.update_every, config.max_length, 'memory')
     self._memory_index = tf.Variable(0, False)
     use_gpu = self._config.use_gpu and utility.available_gpus()
@@ -74,7 +73,7 @@ class PPOAlgorithm(object):
           tf.ones(len(self._batch_env)))
       self._optimizer = self._config.optimizer(self._config.learning_rate)
       with tf.variable_scope('ppo_temporary'):
-        self._episodes = memory.EpisodeMemory(
+        self._episodes = parts.EpisodeMemory(
             template, len(batch_env), config.max_length, 'episodes')
         if output.state is None:
           self._last_state = None

@@ -5,7 +5,10 @@ enable=pylint.extensions.docparams
 disable=g-bad-import-order,import-self,duplicate-code,too-many-arguments,
         import-error,bad-option-value,missing-docstring,no-self-use,
         too-few-public-methods,invalid-name,too-many-locals,no-else-return,
-        blacklisted-name,too-many-instance-attributes
+        blacklisted-name,too-many-instance-attributes,no-member,
+        c-extension-no-member,unsubscriptable-object,no-name-in-module,
+        inconsistent-return-statements,not-context-manager,
+        wrong-import-order,no-value-for-parameter
 
 [FORMAT]
 
