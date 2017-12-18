@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from . import nested
 from . import wrappers
 from .attr_dict import AttrDict
 from .batch_env import BatchEnv
