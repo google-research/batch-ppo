@@ -72,6 +72,7 @@ class PPOAlgorithm(object):
       output = self._network(
           tf.zeros_like(self._batch_env.observ)[:, None],
           tf.ones(len(self._batch_env)))
+      self._optimizer = self._config.optimizer(self._config.learning_rate)
       with tf.variable_scope('ppo_temporary'):
         self._episodes = memory.EpisodeMemory(
             template, len(batch_env), config.max_length, 'episodes')
@@ -92,9 +93,8 @@ class PPOAlgorithm(object):
             tf.zeros_like(self._batch_env.action), False, name='last_mean')
         self._last_logstd = tf.Variable(
             tf.zeros_like(self._batch_env.action), False, name='last_logstd')
-    self._penalty = tf.Variable(
-        self._config.kl_init_penalty, False, dtype=tf.float32)
-    self._optimizer = self._config.optimizer(self._config.learning_rate)
+      self._penalty = tf.Variable(
+          self._config.kl_init_penalty, False, dtype=tf.float32)
 
   def begin_episode(self, agent_indices):
     """Reset the recurrent states and stored episode.
@@ -132,7 +132,9 @@ class PPOAlgorithm(object):
       else:
         state = tf.contrib.framework.nest.map_structure(
             lambda x: tf.gather(x, agent_indices), self._last_state)
-      output = self._network(observ[:, None], tf.ones(observ.shape[0]), state)
+      use_gpu = self._config.use_gpu and utility.available_gpus()
+      with tf.device('/gpu:0' if use_gpu else '/cpu:0'):
+        output = self._network(observ[:, None], tf.ones(observ.shape[0]), state)
       action = tf.cond(
           self._is_training, output.policy.sample, lambda: output.mean)
       logprob = output.policy.log_prob(action)[:, 0]
@@ -255,29 +257,31 @@ class PPOAlgorithm(object):
     Returns:
       Summary tensor.
     """
-    with tf.name_scope('training'):
-      assert_full = tf.assert_equal(
-          self._memory_index, self._config.update_every)
-      with tf.control_dependencies([assert_full]):
-        data = self._memory.data()
-      (observ, action, old_mean, old_logstd, reward), length = data
-      with tf.control_dependencies([tf.assert_greater(length, 0)]):
-        length = tf.identity(length)
-      observ = self._observ_filter.transform(observ)
-      reward = self._reward_filter.transform(reward)
-      update_summary = self._perform_update_steps(
-          observ, action, old_mean, old_logstd, reward, length)
-      with tf.control_dependencies([update_summary]):
-        penalty_summary = self._adjust_penalty(
-            observ, old_mean, old_logstd, length)
-      with tf.control_dependencies([penalty_summary]):
-        clear_memory = tf.group(
-            self._memory.clear(), self._memory_index.assign(0))
-      with tf.control_dependencies([clear_memory]):
-        weight_summary = utility.variable_summaries(
-            tf.trainable_variables(), self._config.weight_summaries)
-        return tf.summary.merge([
-            update_summary, penalty_summary, weight_summary])
+    use_gpu = self._config.use_gpu and utility.available_gpus()
+    with tf.device('/gpu:0' if use_gpu else '/cpu:0'):
+      with tf.name_scope('training'):
+        assert_full = tf.assert_equal(
+            self._memory_index, self._config.update_every)
+        with tf.control_dependencies([assert_full]):
+          data = self._memory.data()
+        (observ, action, old_mean, old_logstd, reward), length = data
+        with tf.control_dependencies([tf.assert_greater(length, 0)]):
+          length = tf.identity(length)
+        observ = self._observ_filter.transform(observ)
+        reward = self._reward_filter.transform(reward)
+        update_summary = self._perform_update_steps(
+            observ, action, old_mean, old_logstd, reward, length)
+        with tf.control_dependencies([update_summary]):
+          penalty_summary = self._adjust_penalty(
+              observ, old_mean, old_logstd, length)
+        with tf.control_dependencies([penalty_summary]):
+          clear_memory = tf.group(
+              self._memory.clear(), self._memory_index.assign(0))
+        with tf.control_dependencies([clear_memory]):
+          weight_summary = utility.variable_summaries(
+              tf.trainable_variables(), self._config.weight_summaries)
+          return tf.summary.merge([
+              update_summary, penalty_summary, weight_summary])
 
   def _perform_update_steps(
       self, observ, action, old_mean, old_logstd, reward, length):
