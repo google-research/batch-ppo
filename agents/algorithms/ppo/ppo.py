@@ -27,6 +27,7 @@ import functools
 import tensorflow as tf
 
 from agents import parts
+from agents import tools
 from agents.algorithms.ppo import utility
 
 
@@ -79,11 +80,11 @@ class PPO(object):
           self._last_state = None
         else:
           # Ensure the batch dimension is set.
-          tf.contrib.framework.nest.map_structure(
+          tools.nested.map(
               lambda x: x.set_shape([len(batch_env)] + x.shape.as_list()[1:]),
               output.state)
           # pylint: disable=undefined-variable
-          self._last_state = tf.contrib.framework.nest.map_structure(
+          self._last_state = tools.nested.map(
               lambda x: tf.Variable(lambda: tf.zeros_like(x), False),
               output.state)
         self._last_action = tf.Variable(
@@ -129,7 +130,7 @@ class PPO(object):
       if self._last_state is None:
         state = None
       else:
-        state = tf.contrib.framework.nest.map_structure(
+        state = tools.nested.map(
             lambda x: tf.gather(x, agent_indices), self._last_state)
       use_gpu = self._config.use_gpu and utility.available_gpus()
       with tf.device('/gpu:0' if use_gpu else '/cpu:0'):

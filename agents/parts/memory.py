@@ -20,6 +20,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from agents import tools
+
 
 class EpisodeMemory(object):
   """Memory that stores episodes."""
@@ -32,7 +34,7 @@ class EpisodeMemory(object):
     done indicators.
 
     Args:
-      template: List of tensors to derive shapes and dtypes of each transition.
+      template: Nested tensors to derive shapes and dtypes of each transition.
       capacity: Number of episodes, or rows, hold by the memory.
       max_length: Allocated sequence length for the episodes.
       scope: Variable scope to use for internal variables.
@@ -42,11 +44,10 @@ class EpisodeMemory(object):
     with tf.variable_scope(scope) as var_scope:
       self._scope = var_scope
       self._length = tf.Variable(tf.zeros(capacity, tf.int32), False)
-      self._buffers = [
-          tf.Variable(tf.zeros(
-              [capacity, max_length] + elem.shape.as_list(),
-              elem.dtype), False)
-          for elem in template]
+      self._buffers = tools.nested.map(
+          lambda x: tf.Variable(tf.zeros(
+              [capacity, max_length] + x.shape.as_list(), x.dtype), False),
+          template)
 
   def length(self, rows=None):
     """Tensor holding the current length of episodes.
@@ -79,12 +80,12 @@ class EpisodeMemory(object):
       assert_max_length = tf.assert_less(
           tf.gather(self._length, rows), self._max_length,
           message='max length exceeded')
-    append_ops = []
     with tf.control_dependencies([assert_max_length]):
-      for buffer_, elements in zip(self._buffers, transitions):
-        timestep = tf.gather(self._length, rows)
-        indices = tf.stack([rows, timestep], 1)
-        append_ops.append(tf.scatter_nd_update(buffer_, indices, elements))
+      timestep = tf.gather(self._length, rows)
+      indices = tf.stack([rows, timestep], 1)
+      append_ops = tools.nested.map(
+          lambda var, val: tf.scatter_nd_update(var, indices, val),
+          self._buffers, transitions, flatten=True)
     with tf.control_dependencies(append_ops):
       episode_mask = tf.reduce_sum(tf.one_hot(
           rows, self._capacity, dtype=tf.int32), 0)
@@ -108,11 +109,10 @@ class EpisodeMemory(object):
     with tf.control_dependencies([assert_capacity]):
       assert_max_length = tf.assert_less_equal(
           length, self._max_length, message='max length exceeded')
-    replace_ops = []
     with tf.control_dependencies([assert_max_length]):
-      for buffer_, elements in zip(self._buffers, episodes):
-        replace_op = tf.scatter_update(buffer_, rows, elements)
-        replace_ops.append(replace_op)
+      replace_ops = tools.nested.map(
+          lambda var, val: tf.scatter_update(var, rows, val),
+          self._buffers, episodes, flatten=True)
     with tf.control_dependencies(replace_ops):
       return tf.scatter_update(self._length, rows, length)
 
@@ -131,7 +131,7 @@ class EpisodeMemory(object):
     """
     rows = tf.range(self._capacity) if rows is None else rows
     assert rows.shape.ndims == 1
-    episode = [tf.gather(buffer_, rows) for buffer_ in self._buffers]
+    episode = tools.nested.map(lambda var: tf.gather(var, rows), self._buffers)
     length = tf.gather(self._length, rows)
     return episode, length
 
