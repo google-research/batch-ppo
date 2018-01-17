@@ -32,7 +32,7 @@ def default():
   algorithm = ppo.PPOAlgorithm
   num_agents = 30
   eval_episodes = 30
-  use_gpu = True
+  use_gpu = False
   # Network
   network = networks.feed_forward_gaussian
   weight_summaries = dict(
