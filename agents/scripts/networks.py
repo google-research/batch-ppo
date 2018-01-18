@@ -12,43 +12,77 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Network definitions for the PPO algorithm."""
+"""Policy networks for agents."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import collections
 import functools
 import operator
 
+import agents
+import numpy as np
 import tensorflow as tf
 
+tfd = tf.contrib.distributions
 
-NetworkOutput = collections.namedtuple(
-    'NetworkOutput', 'policy, mean, logstd, value, state')
+
+# TensorFlow's default implementation of the KL divergence between two
+# tf.contrib.distributions.MultivariateNormalDiag instances sometimes results in
+# NaN values in the gradients (not in the forward pass). Until the default
+# implementation is fixed, we use our own KL implementation.
+class CustomKLDiagNormal(tfd.MultivariateNormalDiag):
+  """Multivariate Normal with diagonal covariance and our custom KL code."""
+  pass
+
+
+@tfd.RegisterKL(CustomKLDiagNormal, CustomKLDiagNormal)
+def _custom_diag_normal_kl(lhs, rhs, name=None):  # pylint: disable=unused-argument
+  """Empirical KL divergence of two normals with diagonal covariance.
+
+  Args:
+    lhs: Diagonal Normal distribution.
+    rhs: Diagonal Normal distribution.
+    name: Name scope for the op.
+
+  Returns:
+    KL divergence from lhs to rhs.
+  """
+  with tf.name_scope(name or 'kl_divergence'):
+    mean0 = lhs.mean()
+    mean1 = rhs.mean()
+    logstd0 = tf.log(lhs.stddev())
+    logstd1 = tf.log(rhs.stddev())
+    logstd0_2, logstd1_2 = 2 * logstd0, 2 * logstd1
+    return 0.5 * (
+        tf.reduce_sum(tf.exp(logstd0_2 - logstd1_2), -1) +
+        tf.reduce_sum((mean1 - mean0) ** 2 / tf.exp(logstd1_2), -1) +
+        tf.reduce_sum(logstd1_2, -1) - tf.reduce_sum(logstd0_2, -1) -
+        mean0.shape[-1].value)
 
 
 def feed_forward_gaussian(
     config, action_size, observations, unused_length, state=None):
   """Independent feed forward networks for policy and value.
 
-  The policy network outputs the mean action and the log standard deviation
-  is learned as independent parameter vector.
+  The policy network outputs the mean action and the standard deviation is
+  learned as independent parameter vector.
 
   Args:
     config: Configuration object.
     action_size: Length of the action vector.
     observations: Sequences of observations.
     unused_length: Batch of sequence lengths.
-    state: Batch of initial recurrent states.
+    state: Unused batch of initial states.
 
   Returns:
-    NetworkOutput tuple.
+    Attribute dictionary containing the policy, value, and unused state.
   """
   mean_weights_initializer = tf.contrib.layers.variance_scaling_initializer(
       factor=config.init_mean_factor)
-  logstd_initializer = tf.random_normal_initializer(config.init_logstd, 1e-10)
+  before_softplus_std_initializer = tf.constant_initializer(
+      np.log(np.exp(config.init_std) - 1))
   flat_observations = tf.reshape(observations, [
       tf.shape(observations)[0], tf.shape(observations)[1],
       functools.reduce(operator.mul, observations.shape.as_list()[2:], 1)])
@@ -59,10 +93,11 @@ def feed_forward_gaussian(
     mean = tf.contrib.layers.fully_connected(
         x, action_size, tf.tanh,
         weights_initializer=mean_weights_initializer)
-    logstd = tf.get_variable(
-        'logstd', mean.shape[2:], tf.float32, logstd_initializer)
-    logstd = tf.tile(
-        logstd[None, None],
+    std = tf.nn.softplus(tf.get_variable(
+        'before_softplus_std', mean.shape[2:], tf.float32,
+        before_softplus_std_initializer))
+    std = tf.tile(
+        std[None, None],
         [tf.shape(mean)[0], tf.shape(mean)[1]] + [1] * (mean.shape.ndims - 2))
   with tf.variable_scope('value'):
     x = flat_observations
@@ -70,20 +105,19 @@ def feed_forward_gaussian(
       x = tf.contrib.layers.fully_connected(x, size, tf.nn.relu)
     value = tf.contrib.layers.fully_connected(x, 1, None)[..., 0]
   mean = tf.check_numerics(mean, 'mean')
-  logstd = tf.check_numerics(logstd, 'logstd')
+  std = tf.check_numerics(std, 'std')
   value = tf.check_numerics(value, 'value')
-  policy = tf.contrib.distributions.MultivariateNormalDiag(
-      mean, tf.exp(logstd))
-  return NetworkOutput(policy, mean, logstd, value, state)
+  policy = CustomKLDiagNormal(mean, std)
+  return agents.tools.AttrDict(policy=policy, value=value, state=state)
 
 
 def recurrent_gaussian(
     config, action_size, observations, length, state=None):
   """Independent recurrent policy and feed forward value networks.
 
-  The policy network outputs the mean action and the log standard deviation
-  is learned as independent parameter vector. The last policy layer is
-  recurrent and uses a GRU cell.
+  The policy network outputs the mean action and the standard deviation is
+  learned as independent parameter vector. The last policy layer is recurrent
+  and uses a GRU cell.
 
   Args:
     config: Configuration object.
@@ -93,11 +127,12 @@ def recurrent_gaussian(
     state: Batch of initial recurrent states.
 
   Returns:
-    NetworkOutput tuple.
+    Attribute dictionary containing the policy, value, and state.
   """
   mean_weights_initializer = tf.contrib.layers.variance_scaling_initializer(
       factor=config.init_mean_factor)
-  logstd_initializer = tf.random_normal_initializer(config.init_logstd, 1e-10)
+  before_softplus_std_initializer = tf.constant_initializer(
+      np.log(np.exp(config.init_std) - 1))
   cell = tf.contrib.rnn.GRUBlockCell(config.policy_layers[-1])
   flat_observations = tf.reshape(observations, [
       tf.shape(observations)[0], tf.shape(observations)[1],
@@ -110,10 +145,11 @@ def recurrent_gaussian(
     mean = tf.contrib.layers.fully_connected(
         x, action_size, tf.tanh,
         weights_initializer=mean_weights_initializer)
-    logstd = tf.get_variable(
-        'logstd', mean.shape[2:], tf.float32, logstd_initializer)
-    logstd = tf.tile(
-        logstd[None, None],
+    std = tf.nn.softplus(tf.get_variable(
+        'before_softplus_std', mean.shape[2:], tf.float32,
+        before_softplus_std_initializer))
+    std = tf.tile(
+        std[None, None],
         [tf.shape(mean)[0], tf.shape(mean)[1]] + [1] * (mean.shape.ndims - 2))
   with tf.variable_scope('value'):
     x = flat_observations
@@ -121,9 +157,7 @@ def recurrent_gaussian(
       x = tf.contrib.layers.fully_connected(x, size, tf.nn.relu)
     value = tf.contrib.layers.fully_connected(x, 1, None)[..., 0]
   mean = tf.check_numerics(mean, 'mean')
-  logstd = tf.check_numerics(logstd, 'logstd')
+  std = tf.check_numerics(std, 'std')
   value = tf.check_numerics(value, 'value')
-  policy = tf.contrib.distributions.MultivariateNormalDiag(
-      mean, tf.exp(logstd))
-  # assert state.shape.as_list()[0] is not None
-  return NetworkOutput(policy, mean, logstd, value, state)
+  policy = CustomKLDiagNormal(mean, std)
+  return agents.tools.AttrDict(policy=policy, value=value, state=state)

@@ -116,7 +116,7 @@ def train(config, env_processes):
         (config.update_every + config.eval_episodes))
   # Exclude episode related variables since the Python state of environments is
   # not checkpointed and thus new episodes start after resuming.
-  saver = utility.define_saver(exclude=(r'.*_temporary/.*',))
+  saver = utility.define_saver(exclude=(r'.*_temporary.*',))
   sess_config = tf.ConfigProto(allow_soft_placement=True)
   sess_config.gpu_options.allow_growth = True
   with tf.Session(config=sess_config) as sess:

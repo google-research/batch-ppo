@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
-import math
 import re
 
 import tensorflow as tf
@@ -119,29 +118,6 @@ def lambda_advantage(reward, value, length, discount):
   return tf.check_numerics(tf.stop_gradient(advantage), 'advantage')
 
 
-def diag_normal_kl(mean0, logstd0, mean1, logstd1):
-  """Epirical KL divergence of two normals with diagonal covariance."""
-  logstd0_2, logstd1_2 = 2 * logstd0, 2 * logstd1
-  return 0.5 * (
-      tf.reduce_sum(tf.exp(logstd0_2 - logstd1_2), -1) +
-      tf.reduce_sum((mean1 - mean0) ** 2 / tf.exp(logstd1_2), -1) +
-      tf.reduce_sum(logstd1_2, -1) - tf.reduce_sum(logstd0_2, -1) -
-      mean0.shape[-1].value)
-
-
-def diag_normal_logpdf(mean, logstd, loc):
-  """Log density of a normal with diagonal covariance."""
-  constant = -0.5 * math.log(2 * math.pi) - logstd
-  value = -0.5 * ((loc - mean) / tf.exp(logstd)) ** 2
-  return tf.reduce_sum(constant + value, -1)
-
-
-def diag_normal_entropy(mean, logstd):
-  """Empirical entropy of a normal with diagonal covariance."""
-  constant = mean.shape[-1].value * math.log(2 * math.pi * math.e)
-  return (constant + tf.reduce_sum(2 * logstd, 1)) / 2
-
-
 def available_gpus():
   """List of GPU device names detected by TensorFlow."""
   local_device_protos = device_lib.list_local_devices()
@@ -211,3 +187,22 @@ def variable_summaries(vars_, groups=None, scope='weights'):
     vars_ = tf.concat(vars_, 0)
     summaries.append(tf.summary.histogram(scope + '/' + name, vars_))
   return tf.summary.merge(summaries)
+
+
+def set_dimension(tensor, axis, value):
+  """Set the length of a tensor along the specified dimension.
+
+  Args:
+    tensor: Tensor to define shape of.
+    axis: Dimension to set the static shape for.
+    value: Integer holding the length.
+
+  Raises:
+    ValueError: When the tensor already has a different length specified.
+  """
+  shape = tensor.shape.as_list()
+  if shape[axis] not in (value, None):
+    message = 'Cannot set dimension {} of tensor {} to {}; is already {}.'
+    raise ValueError(message.format(axis, tensor.name, value, shape[axis]))
+  shape[axis] = value
+  tensor.set_shape(shape)

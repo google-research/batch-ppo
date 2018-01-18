@@ -64,6 +64,8 @@ def map_(function, *structures, flatten=False):
     Nested structure.
   """
   def impl(function, *structures):
+    if len(structures) == 0:  # pylint: disable=len-as-condition
+      return structures
     if all(isinstance(s, (tuple, list)) for s in structures):
       if len(set(len(x) for x in structures)) > 1:
         raise ValueError('Cannot merge tuples or lists of different length.')
@@ -97,7 +99,11 @@ def flatten_(structure):
     Flat tuple.
   """
   if isinstance(structure, dict):
-    structure = zip(*sorted(structure.items(), key=lambda x: x[0]))[1]
+    if structure:
+      structure = zip(*sorted(structure.items(), key=lambda x: x[0]))[1]
+    else:
+      # Zip doesn't work on an the items of an empty dictionary.
+      structure = ()
   if isinstance(structure, (tuple, list)):
     result = []
     for element in structure:
@@ -124,6 +130,8 @@ def filter_(predicate, *structures, flatten=False):
     Nested structure.
   """
   def impl(predicate, *structures):
+    if len(structures) == 0:  # pylint: disable=len-as-condition
+      return structures
     if all(isinstance(s, (tuple, list)) for s in structures):
       if len(set(len(x) for x in structures)) > 1:
         raise ValueError('Cannot merge tuples or lists of different length.')

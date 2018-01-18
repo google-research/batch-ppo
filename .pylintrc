@@ -8,7 +8,7 @@ disable=g-bad-import-order,import-self,duplicate-code,too-many-arguments,
         blacklisted-name,too-many-instance-attributes,no-member,
         c-extension-no-member,unsubscriptable-object,no-name-in-module,
         inconsistent-return-statements,not-context-manager,
-        wrong-import-order,no-value-for-parameter
+        wrong-import-order,no-value-for-parameter,undefined-variable
 
 [FORMAT]
 

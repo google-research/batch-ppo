@@ -25,6 +25,9 @@ from agents.tools import nested
 
 class ZipTest(tf.test.TestCase):
 
+  def test_empty(self):
+    self.assertEqual({}, nested.zip({}, {}))
+
   def test_base_case(self):
     self.assertEqual((1, 2, 3), nested.zip(1, 2, 3))
 
@@ -76,6 +79,9 @@ class ZipTest(tf.test.TestCase):
 
 class MapTest(tf.test.TestCase):
 
+  def test_empty(self):
+    self.assertEqual({}, nested.map(lambda x: x, {}))
+
   def test_shallow_list(self):
     self.assertEqual([2, 4, 6], nested.map(lambda x: 2 * x, [1, 2, 3]))
 
@@ -101,8 +107,14 @@ class MapTest(tf.test.TestCase):
 
 class FlattenTest(tf.test.TestCase):
 
+  def test_empty(self):
+    self.assertEqual((), nested.flatten({}))
+
   def test_base_case(self):
     self.assertEqual((1,), nested.flatten(1))
+
+  def test_convert_type(self):
+    self.assertEqual((1, 2, 3), nested.flatten([1, 2, 3]))
 
   def test_mixed_structure(self):
     self.assertEqual((1, 2, 3, 4), nested.flatten([(1, 2), 3, {'foo': [4]}]))
@@ -112,6 +124,10 @@ class FlattenTest(tf.test.TestCase):
 
 
 class FilterTest(tf.test.TestCase):
+
+  def test_empty(self):
+    self.assertEqual({}, nested.filter(lambda x: True, {}))
+    self.assertEqual({}, nested.filter(lambda x: False, {}))
 
   def test_base_case(self):
     self.assertEqual((), nested.filter(lambda x: False, 1))

@@ -40,7 +40,7 @@ def default():
   policy_layers = 200, 100
   value_layers = 200, 100
   init_mean_factor = 0.1
-  init_logstd = -1
+  init_std = 0.35
   # Optimization
   update_every = 30
   update_epochs = 25
