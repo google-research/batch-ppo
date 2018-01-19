@@ -105,7 +105,7 @@ def visualize(
     total_steps = num_episodes * config.max_length
     loop = _define_loop(graph, total_steps)
   saver = utility.define_saver(
-      exclude=(r'.*_temporary/.*', r'global_step'))
+      exclude=(r'.*_temporary.*', r'global_step'))
   sess_config = tf.ConfigProto(allow_soft_placement=True)
   sess_config.gpu_options.allow_growth = True
   with tf.Session(config=sess_config) as sess:
