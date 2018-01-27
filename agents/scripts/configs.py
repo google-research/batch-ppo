@@ -33,13 +33,15 @@ def default():
   num_agents = 30
   eval_episodes = 30
   use_gpu = False
+  # Environment
+  normalize_ranges = True
   # Network
   network = networks.feed_forward_gaussian
   weight_summaries = dict(
       all=r'.*', policy=r'.*/policy/.*', value=r'.*/value/.*')
   policy_layers = 200, 100
   value_layers = 200, 100
-  init_mean_factor = 0.1
+  init_output_factor = 0.1
   init_std = 0.35
   # Optimization
   update_every = 30
@@ -72,9 +74,11 @@ def cartpole():
   """Configuration for the cart pole classic control task."""
   locals().update(default())
   # Environment
-  env = 'CartPole-v0'
-  max_length = 200
-  steps = 2e6  # 2M
+  env = 'CartPole-v1'
+  max_length = 500
+  steps = 2e5  # 200k
+  normalize_ranges = False  # The env reports wrong ranges.
+  # Network
   network = networks.feed_forward_categorical
   return locals()
 

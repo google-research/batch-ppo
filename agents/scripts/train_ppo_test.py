@@ -50,9 +50,10 @@ class PPOTest(tf.test.TestCase):
   def test_no_crash_cartpole(self):
     config = self._define_config()
     with config.unlocked:
-      config.env = 'CartPole-v0'
+      config.env = 'CartPole-v1'
       config.max_length = 200
       config.steps = 1000
+      config.normalize_ranges = False  # The env reports wrong ranges.
       config.network = networks.feed_forward_categorical
     for score in train.train(config, env_processes=True):
       float(score)

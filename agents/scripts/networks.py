@@ -80,11 +80,13 @@ def feed_forward_gaussian(
   Returns:
     Attribute dictionary containing the policy, value, and unused state.
   """
-  assert isinstance(action_space, gym.spaces.Box), 'Expecting continuous actions.'
-  assert len(action_space.shape) == 1, 'Network only supports vector-shaped actions.'
+  if not isinstance(action_space, gym.spaces.Box):
+    raise ValueError('Network expects continuous actions.')
+  if not len(action_space.shape) == 1:
+    raise ValueError('Network only supports 1D action vectors.')
   action_size = action_space.shape[0]
-  mean_weights_initializer = tf.contrib.layers.variance_scaling_initializer(
-      factor=config.init_mean_factor)
+  init_output_weights = tf.contrib.layers.variance_scaling_initializer(
+      factor=config.init_output_factor)
   before_softplus_std_initializer = tf.constant_initializer(
       np.log(np.exp(config.init_std) - 1))
   flat_observations = tf.reshape(observations, [
@@ -96,7 +98,7 @@ def feed_forward_gaussian(
       x = tf.contrib.layers.fully_connected(x, size, tf.nn.relu)
     mean = tf.contrib.layers.fully_connected(
         x, action_size, tf.tanh,
-        weights_initializer=mean_weights_initializer)
+        weights_initializer=init_output_weights)
     std = tf.nn.softplus(tf.get_variable(
         'before_softplus_std', mean.shape[2:], tf.float32,
         before_softplus_std_initializer))
@@ -132,7 +134,10 @@ def feed_forward_categorical(
   Returns:
     Attribute dictionary containing the policy, value, and unused state.
   """
-  assert isinstance(action_space, gym.spaces.Discrete), 'Expecting discrete actions.'
+  init_output_weights = tf.contrib.layers.variance_scaling_initializer(
+      factor=config.init_output_factor)
+  if not isinstance(action_space, gym.spaces.Discrete):
+    raise ValueError('Network expects discrete actions.')
   flat_observations = tf.reshape(observations, [
       tf.shape(observations)[0], tf.shape(observations)[1],
       functools.reduce(operator.mul, observations.shape.as_list()[2:], 1)])
@@ -140,14 +145,16 @@ def feed_forward_categorical(
     x = flat_observations
     for size in config.policy_layers:
       x = tf.contrib.layers.fully_connected(x, size, tf.nn.relu)
-    logits = tf.contrib.layers.fully_connected(x, action_space.n, activation_fn=None)
+    logits = tf.contrib.layers.fully_connected(
+        x, action_space.n, None, weights_initializer=init_output_weights)
   with tf.variable_scope('value'):
     x = flat_observations
     for size in config.value_layers:
       x = tf.contrib.layers.fully_connected(x, size, tf.nn.relu)
     value = tf.contrib.layers.fully_connected(x, 1, None)[..., 0]
-  policy = tfd.Categorical(logits=logits)
+  policy = tfd.Categorical(logits)
   return agents.tools.AttrDict(policy=policy, value=value, state=state)
+
 
 def recurrent_gaussian(
     config, action_space, observations, length, state=None):
@@ -167,11 +174,13 @@ def recurrent_gaussian(
   Returns:
     Attribute dictionary containing the policy, value, and state.
   """
-  assert isinstance(action_space, gym.spaces.Box), 'Expecting continuous actions.'
-  assert len(action_space.shape) == 1, 'Network only supports vector-shaped actions.'
+  if not isinstance(action_space, gym.spaces.Box):
+    raise ValueError('Network expects continuous actions.')
+  if not len(action_space.shape) == 1:
+    raise ValueError('Network only supports 1D action vectors.')
   action_size = action_space.shape[0]
-  mean_weights_initializer = tf.contrib.layers.variance_scaling_initializer(
-      factor=config.init_mean_factor)
+  init_output_weights = tf.contrib.layers.variance_scaling_initializer(
+      factor=config.init_output_factor)
   before_softplus_std_initializer = tf.constant_initializer(
       np.log(np.exp(config.init_std) - 1))
   cell = tf.contrib.rnn.GRUBlockCell(config.policy_layers[-1])
@@ -185,7 +194,7 @@ def recurrent_gaussian(
     x, state = tf.nn.dynamic_rnn(cell, x, length, state, tf.float32)
     mean = tf.contrib.layers.fully_connected(
         x, action_size, tf.tanh,
-        weights_initializer=mean_weights_initializer)
+        weights_initializer=init_output_weights)
     std = tf.nn.softplus(tf.get_variable(
         'before_softplus_std', mean.shape[2:], tf.float32,
         before_softplus_std_initializer))

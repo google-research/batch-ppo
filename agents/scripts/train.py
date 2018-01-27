@@ -49,10 +49,16 @@ def _create_environment(config):
     env = config.env()
   if config.max_length:
     env = tools.wrappers.LimitDuration(env, config.max_length)
-  discrete_actions = isinstance(env.action_space, gym.spaces.Discrete)
-  env = tools.wrappers.RangeNormalize(env, action=False if discrete_actions else None)
-  if not discrete_actions:
+  if isinstance(env.action_space, gym.spaces.Box):
+    if config.normalize_ranges:
+      env = tools.wrappers.RangeNormalize(env)
     env = tools.wrappers.ClipAction(env)
+  elif isinstance(env.action_space, gym.spaces.Discrete):
+    if config.normalize_ranges:
+      env = tools.wrappers.RangeNormalize(env, action=False)
+  else:
+    message = "Unsupported action space '{}'".format(type(env.actions_space))
+    raise NotImplementedError(message)
   env = tools.wrappers.ConvertTo32Bit(env)
   return env
 
