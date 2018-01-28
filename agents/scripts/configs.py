@@ -128,3 +128,14 @@ def humanoid():
   steps = 5e7  # 50M
   update_every = 60
   return locals()
+
+
+def bullet_ant():
+  locals().update(default())
+  # Environment
+  import pybullet_envs  # noqa pylint: disable=unused-import
+  env = 'AntBulletEnv-v0'
+  max_length = 1000
+  steps = 3e7  # 30M
+  update_every = 60
+  return locals()
