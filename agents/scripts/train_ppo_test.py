@@ -86,6 +86,20 @@ class PPOTest(tf.test.TestCase):
     for score in train.train(config, env_processes=False):
       float(score)
 
+  def test_no_crash_chunking(self):
+    config = self._define_config()
+    with config.unlocked:
+      config.env = functools.partial(
+          tools.MockEnvironment, observ_shape=(2, 3), action_shape=(3,),
+          min_duration=5, max_duration=25)
+      config.max_length = 25
+      config.steps = 200
+      config.network = networks.recurrent_gaussian
+      config.chunk_length = 10
+      config.batch_size = 5
+    for score in train.train(config, env_processes=False):
+      float(score)
+
   def _define_config(self):
     # Start from the example configuration.
     locals().update(configs.default())

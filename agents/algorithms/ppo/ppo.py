@@ -313,16 +313,15 @@ class PPO(object):
         # which, even if masked out, would result in NaN gradients.
         old_policy_params = tools.nested.map(
             lambda param: self._mask(param, length, 1), old_policy_params)
-        old_policy = self._policy_type(**old_policy_params)
         with tf.control_dependencies([tf.assert_greater(length, 0)]):
           length = tf.identity(length)
         observ = self._observ_filter.transform(observ)
         reward = self._reward_filter.transform(reward)
         update_summary = self._perform_update_steps(
-            observ, action, old_policy, reward, length)
+            observ, action, old_policy_params, reward, length)
         with tf.control_dependencies([update_summary]):
           penalty_summary = self._adjust_penalty(
-              observ, old_policy, length)
+              observ, old_policy_params, length)
         with tf.control_dependencies([penalty_summary]):
           clear_memory = tf.group(
               self._memory.clear(), self._memory_index.assign(0))
@@ -333,7 +332,7 @@ class PPO(object):
               update_summary, penalty_summary, weight_summary])
 
   def _perform_update_steps(
-      self, observ, action, old_policy, reward, length):
+      self, observ, action, old_policy_params, reward, length):
     """Perform multiple update steps of value function and policy.
 
     The advantage is computed once at the beginning and shared across
@@ -367,33 +366,36 @@ class PPO(object):
     advantage = tf.Print(
         advantage, [tf.reduce_mean(advantage)],
         'normalized advantage: ')
-    # pylint: disable=g-long-lambda
-    value_loss, policy_loss, summary = tf.scan(
-        lambda _1, _2: self._update_step(
-            observ, action, old_policy, reward, advantage, length),
-        tf.range(self._config.update_epochs),
-        [0., 0., ''], parallel_iterations=1)
+    episodes = (observ, action, old_policy_params, reward, advantage)
+    value_loss, policy_loss, summary = parts.iterate_sequences(
+        self._update_step, [0., 0., ''], episodes, length,
+        self._config.chunk_length,
+        self._config.batch_size,
+        self._config.update_epochs,
+        padding_value=1)
     print_losses = tf.group(
         tf.Print(0, [tf.reduce_mean(value_loss)], 'value loss: '),
         tf.Print(0, [tf.reduce_mean(policy_loss)], 'policy loss: '))
     with tf.control_dependencies([value_loss, policy_loss, print_losses]):
       return summary[self._config.update_epochs // 2]
 
-  def _update_step(
-      self, observ, action, old_policy, reward, advantage, length):
+  def _update_step(self, sequence):
     """Compute the current combined loss and perform a gradient update step.
 
+    The sequences must be a dict containing the keys `length` and `sequence`,
+    where the latter is a tuple containing observations, actions, parameters of
+    the behavioral policy, rewards, and advantages.
+
     Args:
-      observ: Sequences of observations.
-      action: Sequences of actions.
-      old_policy: Action distribution of the behavioral policy.
-      reward: Sequences of reward.
-      advantage: Sequences of advantages.
+      sequence: Sequences of episodes or chunks thereof.
       length: Batch of sequence lengths.
 
     Returns:
       Tuple of value loss, policy loss, and summary tensor.
     """
+    observ, action, old_policy_params, reward, advantage = sequence['sequence']
+    length = sequence['length']
+    old_policy = self._policy_type(**old_policy_params)
     value_loss, value_summary = self._value_loss(observ, reward, length)
     network = self._network(observ, length)
     policy_loss, policy_summary = self._policy_loss(
@@ -505,7 +507,7 @@ class PPO(object):
       policy_loss = tf.reduce_mean(policy_loss, 0)
       return tf.check_numerics(policy_loss, 'policy_loss'), summary
 
-  def _adjust_penalty(self, observ, old_policy, length):
+  def _adjust_penalty(self, observ, old_policy_params, length):
     """Adjust the KL policy between the behavioral and current policy.
 
     Compute how much the policy actually changed during the multiple
@@ -520,7 +522,7 @@ class PPO(object):
     Returns:
       Summary tensor.
     """
-    old_policy = old_policy.copy()  # Work around TensorFlow frame error.
+    old_policy = self._policy_type(**old_policy_params)
     with tf.name_scope('adjust_penalty'):
       network = self._network(observ, length)
       assert_change = tf.assert_equal(

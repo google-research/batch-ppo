@@ -61,7 +61,10 @@ def pendulum():
   # Environment
   env = 'Pendulum-v0'
   max_length = 200
-  steps = 2e6  # 2M
+  steps = 1e6  # 1M
+  # Optimization
+  batch_size = 20
+  chunk_length = 50
   return locals()
 
 
@@ -131,6 +134,7 @@ def humanoid():
 
 
 def bullet_ant():
+  """Configuration for PyBullet's ant task."""
   locals().update(default())
   # Environment
   import pybullet_envs  # noqa pylint: disable=unused-import
@@ -138,4 +142,3 @@ def bullet_ant():
   max_length = 1000
   steps = 3e7  # 30M
   update_every = 60
-  return locals()

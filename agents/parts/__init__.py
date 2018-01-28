@@ -20,3 +20,4 @@ from __future__ import print_function
 
 from .normalize import StreamingNormalize
 from .memory import EpisodeMemory
+from .iterate_sequences import iterate_sequences
