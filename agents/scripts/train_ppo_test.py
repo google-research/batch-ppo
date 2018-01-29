@@ -35,24 +35,12 @@ FLAGS = tf.app.flags.FLAGS
 
 class PPOTest(tf.test.TestCase):
 
-  def test_no_crash_cheetah(self):
+  def test_pendulum_no_crash(self):
     nets = networks.feed_forward_gaussian, networks.recurrent_gaussian
     for network in nets:
       config = self._define_config()
       with config.unlocked:
-        config.env = 'HalfCheetah-v1'
-        config.max_length = 200
-        config.steps = 1000
-        config.network = network
-      for score in train.train(config, env_processes=True):
-        float(score)
-
-  def test_no_crash_ant(self):
-    nets = networks.feed_forward_gaussian, networks.recurrent_gaussian
-    for network in nets:
-      config = self._define_config()
-      with config.unlocked:
-        config.env = 'Ant-v1'
+        config.env = 'Pendulum-v0'
         config.max_length = 200
         config.steps = 1000
         config.network = network

@@ -75,6 +75,7 @@ modifying the code:
 To run unit tests and linting, type:
 
 ```shell
+python2 -m unittest discover -p "*_test.py"
 python3 -m unittest discover -p "*_test.py"
 python3 -m pylint agents
 ```
