@@ -153,6 +153,9 @@ class InGraphBatchEnv(object):
     Args:
       space: Gym space.
 
+    Raises:
+      NotImplementedError: For spaces other than Box and Discrete.
+
     Returns:
       Shape tuple.
     """
@@ -167,6 +170,9 @@ class InGraphBatchEnv(object):
 
     Args:
       space: Gym space.
+
+    Raises:
+      NotImplementedError: For spaces other than Box and Discrete.
 
     Returns:
       TensorFlow data type.

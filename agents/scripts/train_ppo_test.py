@@ -30,9 +30,6 @@ from agents.scripts import networks
 from agents.scripts import train
 
 
-FLAGS = tf.app.flags.FLAGS
-
-
 class PPOTest(tf.test.TestCase):
 
   def test_pendulum_no_crash(self):
@@ -119,5 +116,4 @@ class PPOTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  FLAGS.config = 'unused'
   tf.test.main()

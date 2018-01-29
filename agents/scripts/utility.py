@@ -160,6 +160,7 @@ def save_config(config, logdir=None):
 
 
 def load_config(logdir):
+  # pylint: disable=missing-raises-doc
   """Load a configuration from the log directory.
 
   Args:

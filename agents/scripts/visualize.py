@@ -40,6 +40,9 @@ def _create_environment(config, outdir):
     config: Object providing configurations via attributes.
     outdir: Directory to store videos in.
 
+  Raises:
+    NotImplementedError: For action spaces other than Box and Discrete.
+
   Returns:
     Wrapped OpenAI Gym environment.
   """

@@ -21,17 +21,18 @@ from __future__ import print_function
 import functools
 import operator
 
-import agents
 import gym
 import numpy as np
 import tensorflow as tf
+
+import agents
 
 tfd = tf.contrib.distributions
 
 
 # TensorFlow's default implementation of the KL divergence between two
-# tf.contrib.distributions.MultivariateNormalDiag instances sometimes results in
-# NaN values in the gradients (not in the forward pass). Until the default
+# tf.contrib.distributions.MultivariateNormalDiag instances sometimes results
+# in NaN values in the gradients (not in the forward pass). Until the default
 # implementation is fixed, we use our own KL implementation.
 class CustomKLDiagNormal(tfd.MultivariateNormalDiag):
   """Multivariate Normal with diagonal covariance and our custom KL code."""
@@ -76,6 +77,9 @@ def feed_forward_gaussian(
     observations: Sequences of observations.
     unused_length: Batch of sequence lengths.
     state: Unused batch of initial states.
+
+  Raises:
+    ValueError: Unexpected action space.
 
   Returns:
     Attribute dictionary containing the policy, value, and unused state.
@@ -131,6 +135,9 @@ def feed_forward_categorical(
     unused_length: Batch of sequence lengths.
     state: Unused batch of initial recurrent states.
 
+  Raises:
+    ValueError: Unexpected action space.
+
   Returns:
     Attribute dictionary containing the policy, value, and unused state.
   """
@@ -170,6 +177,9 @@ def recurrent_gaussian(
     observations: Sequences of observations.
     length: Batch of sequence lengths.
     state: Batch of initial recurrent states.
+
+  Raises:
+    ValueError: Unexpected action space.
 
   Returns:
     Attribute dictionary containing the policy, value, and state.

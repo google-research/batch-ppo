@@ -440,6 +440,9 @@ class ExternalProcess(object):
     Args:
       constructor: Constructor for the OpenAI Gym environment.
       conn: Connection for communication to the main process.
+
+    Raises:
+      KeyError: When receiving a message of unknown type.
     """
     try:
       env = constructor()

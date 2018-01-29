@@ -41,6 +41,9 @@ def iterate_sequences(
     num_epochs: How many times to repeat over the data.
     padding_value: Value used for padd the last chunk after the sequence.
 
+  Raises:
+    ValueError: Unknown batch size of the length tensor.
+
   Returns:
     Concatenated nested tensors returned by the consumer.
   """

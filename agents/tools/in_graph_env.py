@@ -137,6 +137,9 @@ class InGraphEnv(object):
     Args:
       space: Gym space.
 
+    Raises:
+      NotImplementedError: For spaces other than Box and Discrete.
+
     Returns:
       Shape tuple.
     """
@@ -151,6 +154,9 @@ class InGraphEnv(object):
 
     Args:
       space: Gym space.
+
+    Raises:
+      NotImplementedError: For spaces other than Box and Discrete.
 
     Returns:
       TensorFlow data type.

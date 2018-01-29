@@ -27,6 +27,7 @@ _builtin_filter = filter
 
 
 def zip_(*structures, **kwargs):
+  # pylint: disable=differing-param-doc,missing-param-doc
   """Combine corresponding elements in multiple nested structure to tuples.
 
   The nested structures can consist of any combination of lists, tuples, and
@@ -50,6 +51,7 @@ def zip_(*structures, **kwargs):
 
 
 def map_(function, *structures, **kwargs):
+  # pylint: disable=differing-param-doc,missing-param-doc
   """Apply a function to every element in a nested structure.
 
   If multiple structures are provided as input, their structure must match and
@@ -69,6 +71,7 @@ def map_(function, *structures, **kwargs):
   # Named keyword arguments are not allowed after *args in Python 2.
   flatten = kwargs.pop('flatten', False)
   assert not kwargs, 'zip() got unexpected keyword arguments.'
+
   def impl(function, *structures):
     if len(structures) == 0:  # pylint: disable=len-as-condition
       return structures
@@ -90,6 +93,7 @@ def map_(function, *structures, **kwargs):
   if flatten:
     result = flatten_(result)
   return result
+
 
 def flatten_(structure):
   """Combine all leaves of a nested structure into a tuple.
@@ -119,6 +123,7 @@ def flatten_(structure):
 
 
 def filter_(predicate, *structures, **kwargs):
+  # pylint: disable=differing-param-doc,missing-param-doc
   """Select elements of a nested structure based on a predicate function.
 
   If multiple structures are provided as input, their structure must match and
@@ -138,6 +143,7 @@ def filter_(predicate, *structures, **kwargs):
   # Named keyword arguments are not allowed after *args in Python 2.
   flatten = kwargs.pop('flatten', False)
   assert not kwargs, 'zip() got unexpected keyword arguments.'
+
   def impl(predicate, *structures):
     if len(structures) == 0:  # pylint: disable=len-as-condition
       return structures
