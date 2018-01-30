@@ -49,8 +49,10 @@ def _create_environment(config):
     env = config.env()
   if config.max_length:
     env = tools.wrappers.LimitDuration(env, config.max_length)
-  env = tools.wrappers.RangeNormalize(env)
-  env = tools.wrappers.ClipAction(env)
+  discrete_actions = isinstance(env.action_space, gym.spaces.Discrete)
+  env = tools.wrappers.RangeNormalize(env, action=False if discrete_actions else None)
+  if not discrete_actions:
+    env = tools.wrappers.ClipAction(env)
   env = tools.wrappers.ConvertTo32Bit(env)
   return env
 

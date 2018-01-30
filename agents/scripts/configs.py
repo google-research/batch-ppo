@@ -68,6 +68,17 @@ def pendulum():
   return locals()
 
 
+def cartpole():
+  """Configuration for the cart pole classic control task."""
+  locals().update(default())
+  # Environment
+  env = 'CartPole-v0'
+  max_length = 200
+  steps = 2e6  # 2M
+  network = networks.feed_forward_categorical
+  return locals()
+
+
 def reacher():
   """Configuration for MuJoCo's reacher task."""
   locals().update(default())

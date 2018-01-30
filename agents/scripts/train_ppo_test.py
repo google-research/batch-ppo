@@ -47,6 +47,16 @@ class PPOTest(tf.test.TestCase):
       for score in train.train(config, env_processes=True):
         float(score)
 
+  def test_no_crash_cartpole(self):
+    config = self._define_config()
+    with config.unlocked:
+      config.env = 'CartPole-v0'
+      config.max_length = 200
+      config.steps = 1000
+      config.network = networks.feed_forward_categorical
+    for score in train.train(config, env_processes=True):
+      float(score)
+
   def test_no_crash_observation_shape(self):
     nets = networks.feed_forward_gaussian, networks.recurrent_gaussian
     observ_shapes = (1,), (2, 3), (2, 3, 4)

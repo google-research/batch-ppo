@@ -123,7 +123,6 @@ class PPO(object):
       # pylint: disable=g-long-lambda
       summary = tf.cond(self._should_log, lambda: tf.summary.merge([
           tf.summary.histogram('mode', output.policy.mode()[:, 0]),
-          tf.summary.histogram('std', output.policy.stddev()[:, 0]),
           tf.summary.histogram('action', action[:, 0]),
           tf.summary.histogram('logprob', logprob)]), str)
       # Remember current policy to append to memory in the experience callback.
@@ -142,7 +141,7 @@ class PPO(object):
           self._last_policy, policy_params, flatten=True)
       with tf.control_dependencies((
           assign_state, remember_last_action) + remember_last_policy):
-        return tf.check_numerics(action[:, 0], 'action'), tf.identity(summary)
+        return action[:, 0], tf.identity(summary)
 
   def experience(
       self, agent_indices, observ, action, reward, unused_done, unused_nextob):
@@ -230,16 +229,15 @@ class PPO(object):
       Parameters of the policy distribution and policy state.
     """
     with tf.device('/gpu:0' if self._use_gpu else '/cpu:0'):
-      action_size = self._batch_env.action.shape[1].value
       network = functools.partial(
-          self._config.network, self._config, action_size)
+          self._config.network, self._config, self._batch_env.action_space)
       self._network = tf.make_template('network', network)
       output = self._network(
           tf.zeros_like(self._batch_env.observ)[:, None],
           tf.ones(len(self._batch_env)))
-    if output.policy.event_shape != (action_size,):
+    if output.policy.event_shape != self._batch_env.action.shape[1:]:
       message = 'Policy event shape {} does not match action shape {}.'
-      message = message.format(output.policy.event_shape, (action_size,))
+      message = message.format(output.policy.event_shape, self._batch_env.action.shape[1:])
       raise ValueError(message)
     self._policy_type = type(output.policy)
     is_tensor = lambda x: isinstance(x, tf.Tensor)
@@ -525,11 +523,8 @@ class PPO(object):
     old_policy = self._policy_type(**old_policy_params)
     with tf.name_scope('adjust_penalty'):
       network = self._network(observ, length)
-      assert_change = tf.assert_equal(
-          tf.reduce_all(tf.equal(network.policy.mean(), old_policy.mean())),
-          False, message='policy should change')
       print_penalty = tf.Print(0, [self._penalty], 'current penalty: ')
-      with tf.control_dependencies([assert_change, print_penalty]):
+      with tf.control_dependencies([print_penalty]):
         kl_change = tf.reduce_mean(self._mask(
             tf.contrib.distributions.kl_divergence(old_policy, network.policy),
             length))
