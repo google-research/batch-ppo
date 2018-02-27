@@ -157,3 +157,4 @@ def bullet_ant():
   max_length = 1000
   steps = 3e7  # 30M
   update_every = 60
+  return locals()
