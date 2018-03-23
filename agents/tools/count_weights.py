@@ -28,7 +28,7 @@ def count_weights(scope=None, exclude=None, graph=None):
   """Count learnable parameters.
 
   Args:
-    scope: Resrict the count to a variable scope.
+    scope: Restrict the count to a variable scope.
     exclude: Regex to match variable names to exclude.
     graph: Operate on a graph other than the current default graph.
 

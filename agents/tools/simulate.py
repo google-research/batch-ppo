@@ -24,7 +24,7 @@ from agents.tools import streaming_mean
 
 
 def simulate(batch_env, algo, log=True, reset=False):
-  """Simulation step of a vecrotized algorithm with in-graph environments.
+  """Simulation step of a vectorized algorithm with in-graph environments.
 
   Integrates the operations implemented by the algorithm and the environments
   into a combined operation.

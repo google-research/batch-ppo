@@ -253,7 +253,7 @@ class PPO(object):
     """Initialize temporary and permanent memory.
 
     Args:
-      policy_params: Nested tuple of policy parametres with all dimensions set.
+      policy_params: Nested tuple of policy parameters with all dimensions set.
 
     Initializes the attributes `self._current_episodes`,
     `self._finished_episodes`, and `self._num_finished_episodes`. The episodes
@@ -308,7 +308,7 @@ class PPO(object):
           data = self._finished_episodes.data()
         (observ, action, old_policy_params, reward), length = data
         # We set padding frames of the parameters to ones to prevent Gaussians
-        # with zero variance. This would result in an inifite KL divergence,
+        # with zero variance. This would result in an infinite KL divergence,
         # which, even if masked out, would result in NaN gradients.
         old_policy_params = tools.nested.map(
             lambda param: self._mask(param, length, 1), old_policy_params)
@@ -558,7 +558,7 @@ class PPO(object):
     Args:
       tensor: Tensor of sequences.
       length: Batch of sequence lengths.
-      padding_value: Value to write into padding elemnts.
+      padding_value: Value to write into padding elements.
 
     Returns:
       Masked sequences.

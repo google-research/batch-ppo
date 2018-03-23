@@ -106,7 +106,7 @@ through these core components:
 - **`agents.tools.simulate()`** fuses the step of an in-graph batch environment
   and a reinforcement learning algorithm together into a single operation to be
   called inside the training loop. This reduces the number of session calls and
-  provieds a simple way to train future algorithms.
+  provides a simple way to train future algorithms.
 
 To understand all the code, please make yourself familiar with TensorFlow's
 control flow operations, especially [`tf.cond()`][tf-cond],

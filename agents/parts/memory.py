@@ -30,7 +30,7 @@ class EpisodeMemory(object):
     """Create a memory that stores episodes.
 
     Each transition tuple consists of quantities specified by the template.
-    These quantities would typically be be observartions, actions, rewards, and
+    These quantities would typically be be observations, actions, rewards, and
     done indicators.
 
     Args:
@@ -126,7 +126,7 @@ class EpisodeMemory(object):
       rows: Episodes to select, defaults to all.
 
     Returns:
-      Tuple containing a tuple of transition quantiries with batch and time
+      Tuple containing a tuple of transition quantities with batch and time
       dimensions, and a batch of sequence lengths.
     """
     rows = tf.range(self._capacity) if rows is None else rows

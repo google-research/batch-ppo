@@ -157,7 +157,7 @@ class Loop(object):
     Args:
       phase_step: The incrementing step.
       batch: The number of steps progressed at once.
-      every: The interval of the periode.
+      every: The interval of the period.
 
     Returns:
       Boolean of whether the event should happen.

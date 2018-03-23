@@ -39,7 +39,7 @@ def iterate_sequences(
     chunk_length: Split sequences into chunks of this size; optional.
     batch_size: Split epochs into batches of this size; optional.
     num_epochs: How many times to repeat over the data.
-    padding_value: Value used for padd the last chunk after the sequence.
+    padding_value: Value used for padding the last chunk after the sequence.
 
   Raises:
     ValueError: Unknown batch size of the length tensor.
@@ -83,7 +83,7 @@ def chunk_sequence(sequence, chunk_length=200, padding_value=0):
   Args:
     sequence: Nested dict of tensors with time dimension.
     chunk_length: Size of chunks the sequence will be split into.
-    padding_value: Value used for padd the last chunk after the sequence.
+    padding_value: Value used for padding the last chunk after the sequence.
 
   Returns:
     Nested dict of sequence tensors with chunk dimension.

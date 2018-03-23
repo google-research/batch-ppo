@@ -29,7 +29,7 @@ def reinit_nested_vars(variables, indices=None):
   """Reset all variables in a nested tuple to zeros.
 
   Args:
-    variables: Nested tuple or list of variaables.
+    variables: Nested tuple or list of variables.
     indices: Batch indices to reset, defaults to all.
 
   Returns:
