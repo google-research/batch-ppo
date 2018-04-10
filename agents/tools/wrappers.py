@@ -118,7 +118,7 @@ class FrameHistory(object):
     self._past_indices = past_indices
     self._step = 0
     self._buffer = None
-    self._capacity = max(past_indices)
+    self._capacity = max(past_indices) + 1
     self._flatten = flatten
 
   def __getattr__(self, name):
