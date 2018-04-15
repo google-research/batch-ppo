@@ -13,6 +13,6 @@ install:
   - pip install -q -U pylint
   - pip install -q -e .
 script:
-  - python -c "import agents
+  - python -c "import agents"
   - python -m pylint agents
   - python -m unittest discover -p "*_test.py"
