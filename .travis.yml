@@ -10,7 +10,8 @@ install:
   - pip install -q -U gym
   - pip install -q -U ruamel.yaml
   - pip install -q -U numpy
-  - pip install -q .
+  - pip install -q -U pylint
+  - pip install -q -e .
 script:
   - python -c "import agents
   - python -m pylint agents
