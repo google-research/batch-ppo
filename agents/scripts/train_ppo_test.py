@@ -39,7 +39,7 @@ class PPOTest(tf.test.TestCase):
       with config.unlocked:
         config.env = 'Pendulum-v0'
         config.max_length = 200
-        config.steps = 1000
+        config.steps = 500
         config.network = network
       for score in train.train(config, env_processes=True):
         float(score)
@@ -49,7 +49,7 @@ class PPOTest(tf.test.TestCase):
     with config.unlocked:
       config.env = 'CartPole-v1'
       config.max_length = 200
-      config.steps = 1000
+      config.steps = 500
       config.normalize_ranges = False  # The env reports wrong ranges.
       config.network = networks.feed_forward_categorical
     for score in train.train(config, env_processes=True):
@@ -65,7 +65,7 @@ class PPOTest(tf.test.TestCase):
             tools.MockEnvironment, observ_shape, action_shape=(3,),
             min_duration=15, max_duration=15)
         config.max_length = 20
-        config.steps = 100
+        config.steps = 50
         config.network = network
       for score in train.train(config, env_processes=False):
         float(score)
@@ -77,7 +77,7 @@ class PPOTest(tf.test.TestCase):
           tools.MockEnvironment, observ_shape=(2, 3), action_shape=(3,),
           min_duration=5, max_duration=25)
       config.max_length = 25
-      config.steps = 200
+      config.steps = 100
       config.network = networks.recurrent_gaussian
     for score in train.train(config, env_processes=False):
       float(score)
@@ -89,7 +89,7 @@ class PPOTest(tf.test.TestCase):
           tools.MockEnvironment, observ_shape=(2, 3), action_shape=(3,),
           min_duration=5, max_duration=25)
       config.max_length = 25
-      config.steps = 200
+      config.steps = 100
       config.network = networks.recurrent_gaussian
       config.chunk_length = 10
       config.batch_size = 5
