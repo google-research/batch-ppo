@@ -51,13 +51,13 @@ class MockEnvironment(object):
   def observation_space(self):
     low = np.zeros(self._observ_shape)
     high = np.ones(self._observ_shape)
-    return gym.spaces.Box(low, high)
+    return gym.spaces.Box(low, high, dtype=np.float32)
 
   @property
   def action_space(self):
     low = np.zeros(self._action_shape)
     high = np.ones(self._action_shape)
-    return gym.spaces.Box(low, high)
+    return gym.spaces.Box(low, high, dtype=np.float32)
 
   @property
   def unwrapped(self):

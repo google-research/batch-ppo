@@ -87,7 +87,7 @@ def reacher():
   """Configuration for MuJoCo's reacher task."""
   locals().update(default())
   # Environment
-  env = 'Reacher-v1'
+  env = 'Reacher-v2'
   max_length = 1000
   steps = 5e6  # 5M
   discount = 0.985
@@ -99,7 +99,7 @@ def cheetah():
   """Configuration for MuJoCo's half cheetah task."""
   locals().update(default())
   # Environment
-  env = 'HalfCheetah-v1'
+  env = 'HalfCheetah-v2'
   max_length = 1000
   steps = 1e7  # 10M
   discount = 0.99
@@ -110,7 +110,7 @@ def walker():
   """Configuration for MuJoCo's walker task."""
   locals().update(default())
   # Environment
-  env = 'Walker2d-v1'
+  env = 'Walker2d-v2'
   max_length = 1000
   steps = 1e7  # 10M
   return locals()
@@ -120,7 +120,7 @@ def hopper():
   """Configuration for MuJoCo's hopper task."""
   locals().update(default())
   # Environment
-  env = 'Hopper-v1'
+  env = 'Hopper-v2'
   max_length = 1000
   steps = 1e7  # 10M
   update_every = 60
@@ -131,7 +131,7 @@ def ant():
   """Configuration for MuJoCo's ant task."""
   locals().update(default())
   # Environment
-  env = 'Ant-v1'
+  env = 'Ant-v2'
   max_length = 1000
   steps = 2e7  # 20M
   return locals()
@@ -141,7 +141,7 @@ def humanoid():
   """Configuration for MuJoCo's humanoid task."""
   locals().update(default())
   # Environment
-  env = 'Humanoid-v1'
+  env = 'Humanoid-v2'
   max_length = 1000
   steps = 5e7  # 50M
   update_every = 60
