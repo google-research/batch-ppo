@@ -18,12 +18,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
 import tensorflow as tf
 
 from agents.tools import nested
 
 
 class ZipTest(tf.test.TestCase):
+
+  def test_scalar(self):
+    self.assertEqual(42, nested.zip(42))
+    self.assertEqual((13, 42), nested.zip(13, 42))
 
   def test_empty(self):
     self.assertEqual({}, nested.zip({}, {}))
@@ -76,8 +82,16 @@ class ZipTest(tf.test.TestCase):
     result = nested.zip(a, b, c)
     self.assertEqual(((1, 4, 7), (2, 5, 8), (3, 6, 9)), result)
 
+  def test_namedtuple(self):
+    Foo = collections.namedtuple('Foo', 'value')
+    foo, bar = Foo(42), Foo(13)
+    self.assertEqual(Foo((42, 13)), nested.zip(foo, bar))
+
 
 class MapTest(tf.test.TestCase):
+
+  def test_scalar(self):
+    self.assertEqual(42, nested.map(lambda x: x, 42))
 
   def test_empty(self):
     self.assertEqual({}, nested.map(lambda x: x, {}))
@@ -104,8 +118,19 @@ class MapTest(tf.test.TestCase):
     result = nested.map(lambda x, y, z: x + y + z, a, b, c)
     self.assertEqual([12, 15, 18], result)
 
+  def test_namedtuple(self):
+    Foo = collections.namedtuple('Foo', 'value')
+    foo, bar = [Foo(42)], [Foo(13)]
+    function = nested.map(lambda x, y: (y, x), foo, bar)
+    self.assertEqual([Foo((13, 42))], function)
+    function = nested.map(lambda x, y: x + y, foo, bar)
+    self.assertEqual([Foo(55)], function)
+
 
 class FlattenTest(tf.test.TestCase):
+
+  def test_scalar(self):
+    self.assertEqual((42,), nested.flatten(42))
 
   def test_empty(self):
     self.assertEqual((), nested.flatten({}))
@@ -161,3 +186,19 @@ class FilterTest(tf.test.TestCase):
   def test_remove_empty_containers(self):
     data = [(1, 2, 3), 4, {'foo': [5, 6], 'bar': 7}]
     self.assertEqual([], nested.filter(lambda x: False, data))
+
+  def test_namedtuple(self):
+    Foo = collections.namedtuple('Foo', 'value1, value2')
+    self.assertEqual(Foo(1, None), nested.filter(lambda x: x == 1, Foo(1, 2)))
+
+  def test_namedtuple_multiple(self):
+    Foo = collections.namedtuple('Foo', 'value1, value2')
+    foo = Foo(1, 2)
+    bar = Foo(2, 3)
+    result = nested.filter(lambda x, y: x + y > 3, foo, bar)
+    self.assertEqual(Foo(None, (2, 3)), result)
+
+  def test_namedtuple_nested(self):
+    Foo = collections.namedtuple('Foo', 'value1, value2')
+    foo = Foo(1, [1, 2, 3])
+    self.assertEqual(Foo(None, [2, 3]), nested.filter(lambda x: x > 1, foo))

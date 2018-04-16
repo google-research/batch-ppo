@@ -70,7 +70,7 @@ def map_(function, *structures, **kwargs):
   """
   # Named keyword arguments are not allowed after *args in Python 2.
   flatten = kwargs.pop('flatten', False)
-  assert not kwargs, 'zip() got unexpected keyword arguments.'
+  assert not kwargs, 'map() got unexpected keyword arguments.'
 
   def impl(function, *structures):
     if len(structures) == 0:  # pylint: disable=len-as-condition
@@ -78,8 +78,11 @@ def map_(function, *structures, **kwargs):
     if all(isinstance(s, (tuple, list)) for s in structures):
       if len(set(len(x) for x in structures)) > 1:
         raise ValueError('Cannot merge tuples or lists of different length.')
-      return type(structures[0])(
-          impl(function, *x) for x in _builtin_zip(*structures))
+      args = tuple((impl(function, *x) for x in _builtin_zip(*structures)))
+      if hasattr(structures[0], '_fields'):  # namedtuple
+        return type(structures[0])(*args)
+      else:  # tuple, list
+        return type(structures[0])(args)
     if all(isinstance(s, dict) for s in structures):
       if len(set(frozenset(x.keys()) for x in structures)) > 1:
         raise ValueError('Cannot merge dicts with different keys.')
@@ -142,7 +145,7 @@ def filter_(predicate, *structures, **kwargs):
   """
   # Named keyword arguments are not allowed after *args in Python 2.
   flatten = kwargs.pop('flatten', False)
-  assert not kwargs, 'zip() got unexpected keyword arguments.'
+  assert not kwargs, 'filter() got unexpected keyword arguments.'
 
   def impl(predicate, *structures):
     if len(structures) == 0:  # pylint: disable=len-as-condition
@@ -155,10 +158,14 @@ def filter_(predicate, *structures, **kwargs):
         filtered = (impl(predicate, *x) for x in _builtin_zip(*structures))
       else:
         filtered = (impl(predicate, x) for x in structures[0])
-      # Remove empty containers.
-      filtered = (
-          x for x in filtered if not isinstance(x, (tuple, list, dict)) or x)
-      return type(structures[0])(filtered)
+      # Remove empty containers and construct result structure.
+      if hasattr(structures[0], '_fields'):  # namedtuple
+        filtered = (x if x != () else None for x in filtered)
+        return type(structures[0])(*filtered)
+      else:  # tuple, list
+        filtered = (
+            x for x in filtered if not isinstance(x, (tuple, list, dict)) or x)
+        return type(structures[0])(filtered)
     if all(isinstance(s, dict) for s in structures):
       if len(set(frozenset(x.keys()) for x in structures)) > 1:
         raise ValueError('Cannot merge dicts with different keys.')
@@ -169,7 +176,7 @@ def filter_(predicate, *structures, **kwargs):
             for k in structures[0]}
       else:
         filtered = {k: impl(predicate, v) for k, v in structures[0].items()}
-      # Remove empty containers.
+      # Remove empty containers and construct result structure.
       filtered = {
           k: v for k, v in filtered.items()
           if not isinstance(v, (tuple, list, dict)) or v}
