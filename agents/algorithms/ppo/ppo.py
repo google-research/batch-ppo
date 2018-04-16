@@ -399,24 +399,16 @@ class PPO(object):
     network = self._network(observ, length)
     policy_loss, policy_summary = self._policy_loss(
         old_policy, network.policy, action, advantage, length)
-    value_gradients, value_variables = (
-        zip(*self._optimizer.compute_gradients(value_loss)))
-    policy_gradients, policy_variables = (
-        zip(*self._optimizer.compute_gradients(policy_loss)))
-    all_gradients = value_gradients + policy_gradients
-    all_variables = value_variables + policy_variables
+    loss = policy_loss + value_loss + network.get('loss', 0)
+    gradients, variables = (
+        zip(*self._optimizer.compute_gradients(loss)))
     optimize = self._optimizer.apply_gradients(
-        zip(all_gradients, all_variables))
+        zip(gradients, variables))
     summary = tf.summary.merge([
         value_summary, policy_summary,
-        tf.summary.scalar(
-            'value_gradient_norm', tf.global_norm(value_gradients)),
-        tf.summary.scalar(
-            'policy_gradient_norm', tf.global_norm(policy_gradients)),
-        utility.gradient_summaries(
-            zip(value_gradients, value_variables), dict(value=r'.*')),
-        utility.gradient_summaries(
-            zip(policy_gradients, policy_variables), dict(policy=r'.*'))])
+        tf.summary.histogram('network_loss', network.get('loss', 0)),
+        tf.summary.scalar('gradient_norm', tf.global_norm(gradients)),
+        utility.gradient_summaries(zip(gradients, variables))])
     with tf.control_dependencies([optimize]):
       return [tf.identity(x) for x in (value_loss, policy_loss, summary)]
 
