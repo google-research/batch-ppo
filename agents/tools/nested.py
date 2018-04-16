@@ -126,7 +126,7 @@ def flatten_(structure):
 
 
 def filter_(predicate, *structures, **kwargs):
-  # pylint: disable=differing-param-doc,missing-param-doc
+  # pylint: disable=differing-param-doc,missing-param-doc, too-many-branches
   """Select elements of a nested structure based on a predicate function.
 
   If multiple structures are provided as input, their structure must match and

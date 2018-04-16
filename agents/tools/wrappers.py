@@ -562,3 +562,36 @@ class ConvertTo32Bit(object):
     if not np.isfinite(reward).all():
       raise ValueError('Infinite reward encountered.')
     return np.array(reward, dtype=np.float32)
+
+
+class CacheSpaces(object):
+  """Cache observation and action space to not recompute them repeatedly."""
+
+  def __init__(self, env):
+    """Cache observation and action space to not recompute them repeatedly.
+
+    Args:
+      env: OpenAI Gym environment.
+    """
+    self._env = env
+    self._observation_space = self._env.observation_space
+    self._action_space = self._env.action_space
+
+  def __getattr__(self, name):
+    """Forward unimplemented attributes to the original environment.
+
+    Args:
+      name: Attribute that was accessed.
+
+    Returns:
+      Value behind the attribute name in the wrapped environment.
+    """
+    return getattr(self._env, name)
+
+  @property
+  def observation_space(self):
+    return self._observation_space
+
+  @property
+  def action_space(self):
+    return self._action_space

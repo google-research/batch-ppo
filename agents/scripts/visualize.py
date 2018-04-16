@@ -67,6 +67,7 @@ def _create_environment(config, outdir):
     message = "Unsupported action space '{}'".format(type(env.actions_space))
     raise NotImplementedError(message)
   env = tools.wrappers.ConvertTo32Bit(env)
+  env = tools.wrappers.CacheSpaces(env)
   return env
 
 
