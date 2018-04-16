@@ -37,22 +37,23 @@ class InGraphBatchEnv(object):
       batch_env: Batch environment.
     """
     self._batch_env = batch_env
+    batch_dims = (len(self._batch_env),)
     observ_shape = self._parse_shape(self._batch_env.observation_space)
     observ_dtype = self._parse_dtype(self._batch_env.observation_space)
     action_shape = self._parse_shape(self._batch_env.action_space)
     action_dtype = self._parse_dtype(self._batch_env.action_space)
     with tf.variable_scope('env_temporary'):
       self._observ = tf.Variable(
-          tf.zeros((len(self._batch_env),) + observ_shape, observ_dtype),
+          lambda: tf.zeros(batch_dims + observ_shape, observ_dtype),
           name='observ', trainable=False)
       self._action = tf.Variable(
-          tf.zeros((len(self._batch_env),) + action_shape, action_dtype),
+          lambda: tf.zeros(batch_dims + action_shape, action_dtype),
           name='action', trainable=False)
       self._reward = tf.Variable(
-          tf.zeros((len(self._batch_env),), tf.float32),
+          lambda: tf.zeros(batch_dims, tf.float32),
           name='reward', trainable=False)
       self._done = tf.Variable(
-          tf.cast(tf.ones((len(self._batch_env),)), tf.bool),
+          lambda: tf.cast(tf.ones(batch_dims), tf.bool),
           name='done', trainable=False)
 
   def __getattr__(self, name):

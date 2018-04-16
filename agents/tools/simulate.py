@@ -120,9 +120,11 @@ def simulate(batch_env, algo, log=True, reset=False):
     reset = tf.convert_to_tensor(reset)
     with tf.variable_scope('simulate_temporary'):
       score = tf.Variable(
-          tf.zeros(len(batch_env), dtype=tf.float32), False, name='score')
+          lambda: tf.zeros(len(batch_env), dtype=tf.float32),
+          trainable=False, name='score')
       length = tf.Variable(
-          tf.zeros(len(batch_env), dtype=tf.int32), False, name='length')
+          lambda: tf.zeros(len(batch_env), dtype=tf.int32),
+          trainable=False, name='length')
     mean_score = streaming_mean.StreamingMean((), tf.float32)
     mean_length = streaming_mean.StreamingMean((), tf.float32)
     agent_indices = tf.cond(
