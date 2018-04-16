@@ -1,0 +1,18 @@
+language: python
+python:
+  - "2.7"
+  - "3.6"
+env:
+  matrix:
+    - TF_VERSION="1.7.*"
+install:
+  - pip install -q -U "tensorflow==$TF_VERSION"
+  - pip install -q -U gym
+  - pip install -q -U ruamel.yaml
+  - pip install -q -U numpy
+  - pip install -q -U pylint
+  - pip install -q -e .
+script:
+  - python -c "import agents"
+  - python -m pylint agents
+  - python -m unittest discover -p "*_test.py"
