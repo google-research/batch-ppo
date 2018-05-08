@@ -483,11 +483,11 @@ class PPO(object):
             tf.cast(kl > cutoff_threshold, tf.float32) *
             (kl - cutoff_threshold) ** 2)
       policy_loss = surrogate_loss + kl_penalty + kl_cutoff
-      entropy = policy.entropy()
+      entropy = tf.reduce_mean(policy.entropy(), axis=1)
       if self._config.entropy_regularization:
         policy_loss -= self._config.entropy_regularization * entropy
       summary = tf.summary.merge([
-          tf.summary.histogram('entropy', policy.entropy()),
+          tf.summary.histogram('entropy', entropy),
           tf.summary.histogram('kl', kl),
           tf.summary.histogram('surrogate_loss', surrogate_loss),
           tf.summary.histogram('kl_penalty', kl_penalty),
