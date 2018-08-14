@@ -60,7 +60,7 @@ def _create_environment(config):
     if config.normalize_ranges:
       env = tools.wrappers.RangeNormalize(env, action=False)
   else:
-    message = "Unsupported action space '{}'".format(type(env.actions_space))
+    message = "Unsupported action space '{}'".format(type(env.action_space))
     raise NotImplementedError(message)
   env = tools.wrappers.ConvertTo32Bit(env)
   env = tools.wrappers.CacheSpaces(env)
