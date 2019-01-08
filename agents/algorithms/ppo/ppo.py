@@ -399,14 +399,16 @@ class PPO(object):
     network = self._network(observ, length)
     policy_loss, policy_summary = self._policy_loss(
         old_policy, network.policy, action, advantage, length)
-    loss = policy_loss + value_loss + network.get('loss', 0)
+    network_loss = network.get('loss', 0)
+    loss = policy_loss + value_loss + tf.reduce_mean(network_loss)
     gradients, variables = (
         zip(*self._optimizer.compute_gradients(loss)))
     optimize = self._optimizer.apply_gradients(
         zip(gradients, variables))
     summary = tf.summary.merge([
         value_summary, policy_summary,
-        tf.summary.histogram('network_loss', network.get('loss', 0)),
+        tf.summary.histogram('network_loss', network_loss),
+        tf.summary.scalar('avg_network_loss', tf.reduce_mean(network_loss)),
         tf.summary.scalar('gradient_norm', tf.global_norm(gradients)),
         utility.gradient_summaries(zip(gradients, variables))])
     with tf.control_dependencies([optimize]):
