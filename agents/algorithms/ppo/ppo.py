@@ -399,7 +399,7 @@ class PPO(object):
     network = self._network(observ, length)
     policy_loss, policy_summary = self._policy_loss(
         old_policy, network.policy, action, advantage, length)
-    network_loss = network.get('loss', 0)
+    network_loss = network.get('loss', 0.0)
     loss = policy_loss + value_loss + tf.reduce_mean(network_loss)
     gradients, variables = (
         zip(*self._optimizer.compute_gradients(loss)))
