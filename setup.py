@@ -25,7 +25,8 @@ setuptools.setup(
     name='batch-ppo',
     version='1.4.0',
     description=(
-        'Efficient TensorFlow implementation of Proximal Policy Optimization.')
+        'Efficient TensorFlow implementation of ' +
+        'Proximal Policy Optimization.'),
     license='Apache 2.0',
     url='http://github.com/google-research/batch-ppo',
     install_requires=[
