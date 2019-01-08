@@ -1,7 +1,7 @@
 <img src="https://www.tensorflow.org/images/tf_logo_transp.png" width=25% align="right">
 
-TensorFlow Agents
-=================
+Batch PPO
+=========
 
 This project provides optimized infrastructure for reinforcement learning. It
 extends the [OpenAI gym interface][post-gym] to multiple parallel environments
