@@ -87,7 +87,7 @@ def fixed_step_return(reward, value, length, discount, window):
     reward = discount * tf.concat(
         [reward[:, 1:], tf.zeros_like(reward[:, -1:])], 1)
   return_ += discount ** window * tf.concat(
-      [value[:, window:], tf.zeros_like(value[:, -window:]), 1])
+      [value[:, window:], tf.zeros_like(value[:, -window:])], 1)
   return tf.check_numerics(tf.stop_gradient(mask * return_), 'return')
 
 
@@ -105,14 +105,14 @@ def lambda_return(reward, value, length, discount, lambda_):
   return tf.check_numerics(tf.stop_gradient(return_), 'return')
 
 
-def lambda_advantage(reward, value, length, discount):
+def lambda_advantage(reward, value, length, discount, gae_lambda):
   """Generalized Advantage Estimation."""
   timestep = tf.range(reward.shape[1].value)
   mask = tf.cast(timestep[None, :] < length[:, None], tf.float32)
   next_value = tf.concat([value[:, 1:], tf.zeros_like(value[:, -1:])], 1)
   delta = reward + discount * next_value - value
   advantage = tf.reverse(tf.transpose(tf.scan(
-      lambda agg, cur: cur + discount * agg,
+      lambda agg, cur: cur + gae_lambda * discount * agg,
       tf.transpose(tf.reverse(mask * delta, [1]), [1, 0]),
       tf.zeros_like(delta[:, -1]), 1, False), [1, 0]), [1])
   return tf.check_numerics(tf.stop_gradient(advantage), 'advantage')
